@@ -140,9 +140,10 @@ onMounted(async () => {
   }
 })
 
-// Watch for changes in chat history to update selected node
-watch(() => chatsStore.currentChatHistory, (newHistory) => {
-  if (newHistory.length > 0 && !selectedNodeId.value) {
+// Watch for changes in chat history to update selected node (only if no node is selected)
+watch(() => chatsStore.currentChatHistory, (newHistory, oldHistory) => {
+  // Only auto-select if no node is currently selected OR if this is the first load
+  if (newHistory.length > 0 && (!selectedNodeId.value || !oldHistory || oldHistory.length === 0)) {
     selectedNodeId.value = newHistory[newHistory.length - 1].message_uuid
   }
 }, { deep: true })
@@ -154,7 +155,7 @@ const handleSendMessage = async () => {
     const response = await chatsStore.sendMessage(newMessage.value)
     newMessage.value = ''
     
-    // Select the new message
+    // Select the new assistant message after the store has been updated
     selectedNodeId.value = response.message_uuid
   } catch (error) {
     console.error('Failed to send message:', error)

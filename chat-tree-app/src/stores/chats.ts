@@ -95,37 +95,22 @@ export const useChatsStore = defineStore('chats', {
         throw new Error('No active chat')
       }
 
-      // Add user message to history immediately
-      const userMessage: HistoryMessage = {
-        message_uuid: `temp-${Date.now()}`,
-        role: 'user',
-        content
-      }
-      this.currentChatHistory.push(userMessage)
-
       try {
         const response = await chatsApi.sendMessage(this.currentChat.chat_uuid, { content })
         
-        // Add assistant response to history
-        const assistantMessage: HistoryMessage = {
-          message_uuid: response.message_uuid,
-          role: 'assistant',
-          content: response.content
-        }
-        this.currentChatHistory.push(assistantMessage)
-        
-        // Update path and tree structure after sending message
-        const [path, treeStructure] = await Promise.all([
+        // Reload the entire chat state to ensure consistency
+        const [history, path, treeStructure] = await Promise.all([
+          chatsApi.getHistory(this.currentChat.chat_uuid),
           chatsApi.getPath(this.currentChat.chat_uuid),
           chatsApi.getTreeStructure(this.currentChat.chat_uuid)
         ])
+        
+        this.currentChatHistory = history.messages
         this.currentPath = path.path
         this.currentTreeStructure = treeStructure
         
         return response
       } catch (error) {
-        // Remove user message on error
-        this.currentChatHistory.pop()
         throw error
       }
     },
@@ -161,8 +146,14 @@ export const useChatsStore = defineStore('chats', {
       }
       
       await chatsApi.selectNode(this.currentChat.chat_uuid, { message_uuid: messageUuid })
-      // Reload history after node selection
-      await this.loadChat(this.currentChat.chat_uuid)
+      
+      // Only update path and tree structure, don't reload entire chat
+      const [path, treeStructure] = await Promise.all([
+        chatsApi.getPath(this.currentChat.chat_uuid),
+        chatsApi.getTreeStructure(this.currentChat.chat_uuid)
+      ])
+      this.currentPath = path.path
+      this.currentTreeStructure = treeStructure
     },
 
     async retryMessage(messageId: string): Promise<MessageResponse> {
