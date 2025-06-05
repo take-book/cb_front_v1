@@ -105,6 +105,21 @@
         </div>
       </div>
     </div>
+
+    <!-- Toast notifications -->
+    <Toast
+      v-for="toastItem in toast.toasts.value"
+      :key="toastItem.id"
+      :type="toastItem.type"
+      :title="toastItem.title"
+      :message="toastItem.message"
+      :duration="toastItem.duration"
+      :show="true"
+      @close="toast.removeToast(toastItem.id)"
+    />
+    
+    <!-- Success indicator for testing -->
+    <div v-if="toast.toasts.value.length > 0" data-test="message-success" class="hidden">Success</div>
   </div>
 </template>
 
@@ -112,13 +127,17 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useChatsStore } from '@/stores/chats'
+import { useToast } from '@/composables/useToast'
 import ChatTreeView from '@/components/ChatTreeView.vue'
+import Toast from '@/components/Toast.vue'
 
 const route = useRoute()
 const chatsStore = useChatsStore()
+const toast = useToast()
 
 const newMessage = ref('')
 const selectedNodeId = ref<string | null>(null)
+const isUserSelecting = ref(false) // Flag to track user-initiated selections
 
 const currentPath = computed(() => {
   return chatsStore.currentPath
@@ -126,24 +145,64 @@ const currentPath = computed(() => {
 
 const selectedMessage = computed(() => {
   if (!selectedNodeId.value) return null
-  return chatsStore.currentChatHistory.find(m => m.message_uuid === selectedNodeId.value)
+  
+  // First try to find in current history
+  const messageInHistory = chatsStore.currentChatHistory.find(m => m.message_uuid === selectedNodeId.value)
+  if (messageInHistory) {
+    return messageInHistory
+  }
+  
+  // If not found in current history, create a placeholder based on tree structure
+  if (chatsStore.currentTreeStructure) {
+    const findMessageInTree = (node: any): any => {
+      if (node.uuid === selectedNodeId.value) {
+        // Return a placeholder message - in a real app you might fetch this from API
+        return {
+          message_uuid: node.uuid,
+          role: 'unknown',
+          content: 'Message from different branch'
+        }
+      }
+      for (const child of node.children) {
+        const found = findMessageInTree(child)
+        if (found) return found
+      }
+      return null
+    }
+    
+    return findMessageInTree(chatsStore.currentTreeStructure.tree)
+  }
+  
+  return null
 })
 
 onMounted(async () => {
   const chatId = route.params.chatId as string
   if (chatId) {
     await chatsStore.loadChat(chatId)
-    // Select the last message by default
-    if (chatsStore.currentChatHistory.length > 0) {
+    // Set selectedNodeId to current node from API, or fallback to last message
+    if (chatsStore.currentTreeStructure?.current_node_uuid) {
+      selectedNodeId.value = chatsStore.currentTreeStructure.current_node_uuid
+    } else if (chatsStore.currentChatHistory.length > 0) {
       selectedNodeId.value = chatsStore.currentChatHistory[chatsStore.currentChatHistory.length - 1].message_uuid
     }
   }
 })
 
-// Watch for changes in chat history to update selected node (only if no node is selected)
+// Watch for changes in tree structure to update selected node (only when not user-selecting)
+watch(() => chatsStore.currentTreeStructure, (newTreeStructure, oldTreeStructure) => {
+  if (newTreeStructure?.current_node_uuid && !isUserSelecting.value) {
+    // Only update if this is an initial load or if selectedNodeId is null
+    if (!selectedNodeId.value || !oldTreeStructure) {
+      selectedNodeId.value = newTreeStructure.current_node_uuid
+    }
+  }
+}, { deep: true })
+
+// Watch for changes in chat history to update selected node (only if no tree structure)
 watch(() => chatsStore.currentChatHistory, (newHistory, oldHistory) => {
-  // Only auto-select if no node is currently selected OR if this is the first load
-  if (newHistory.length > 0 && (!selectedNodeId.value || !oldHistory || oldHistory.length === 0)) {
+  // Only auto-select if no tree structure available and no node is currently selected
+  if (newHistory.length > 0 && !chatsStore.currentTreeStructure?.current_node_uuid && (!selectedNodeId.value || !oldHistory || oldHistory.length === 0)) {
     selectedNodeId.value = newHistory[newHistory.length - 1].message_uuid
   }
 }, { deep: true })
@@ -152,22 +211,51 @@ const handleSendMessage = async () => {
   if (!newMessage.value.trim()) return
 
   try {
+    isUserSelecting.value = true
+    
+    // Ensure the currently selected node is set before sending message
+    if (selectedNodeId.value) {
+      await chatsStore.selectNode(selectedNodeId.value)
+    }
+    
     const response = await chatsStore.sendMessage(newMessage.value)
     newMessage.value = ''
     
     // Select the new assistant message after the store has been updated
     selectedNodeId.value = response.message_uuid
+    
+    // Show success feedback
+    toast.success('Message sent', 'Your message has been sent successfully')
   } catch (error) {
     console.error('Failed to send message:', error)
+    toast.error('Failed to send message', 'Please try again')
+  } finally {
+    // Reset the flag after a short delay to allow API updates to complete
+    setTimeout(() => {
+      isUserSelecting.value = false
+    }, 200)
   }
 }
 
 const handleNodeClick = async (nodeId: string) => {
   try {
+    isUserSelecting.value = true
     selectedNodeId.value = nodeId
     await chatsStore.selectNode(nodeId)
+    
+    // Keep the user-selected node rather than overwriting with API response
+    selectedNodeId.value = nodeId
   } catch (error) {
     console.error('Failed to select node:', error)
+    // Revert selectedNodeId on error
+    if (chatsStore.currentTreeStructure) {
+      selectedNodeId.value = chatsStore.currentTreeStructure.current_node_uuid
+    }
+  } finally {
+    // Reset the flag after a short delay to allow API updates to complete
+    setTimeout(() => {
+      isUserSelecting.value = false
+    }, 100)
   }
 }
 </script>

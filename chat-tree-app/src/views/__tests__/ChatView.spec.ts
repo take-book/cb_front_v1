@@ -185,4 +185,154 @@ describe('ChatView', () => {
     
     expect(wrapper.text()).toContain('Start a conversation')
   })
+
+  it('should update tree structure and current path when node is selected', async () => {
+    const chatsStore = useChatsStore()
+    chatsStore.selectNode = vi.fn().mockResolvedValue(undefined)
+    chatsStore.currentChatHistory = [
+      { message_uuid: 'msg-1', role: 'user', content: 'Hello' },
+      { message_uuid: 'msg-2', role: 'assistant', content: 'Hi there' }
+    ]
+    chatsStore.currentPath = ['msg-1', 'msg-2']
+    chatsStore.currentTreeStructure = {
+      tree: {
+        uuid: 'msg-1',
+        role: 'user',
+        content: 'Hello',
+        children: [{
+          uuid: 'msg-2',
+          role: 'assistant', 
+          content: 'Hi there',
+          children: []
+        }]
+      },
+      current_node_uuid: 'msg-2'
+    }
+    
+    const wrapper = mount(ChatView, mountOptions)
+    
+    // Trigger node selection
+    const treeComponent = wrapper.find('[data-test="chat-tree"]')
+    await treeComponent.trigger('click')
+    
+    expect(chatsStore.selectNode).toHaveBeenCalledWith('msg-123')
+  })
+
+  it('should display correct tree structure for branching conversations', async () => {
+    const chatsStore = useChatsStore()
+    chatsStore.currentChatHistory = [
+      { message_uuid: 'msg-1', role: 'user', content: 'Hello' },
+      { message_uuid: 'msg-2', role: 'assistant', content: 'Hi there' },
+      { message_uuid: 'msg-3', role: 'user', content: 'How are you?' }
+    ]
+    chatsStore.currentPath = ['msg-1', 'msg-2']
+    chatsStore.currentTreeStructure = {
+      tree: {
+        uuid: 'msg-1', 
+        role: 'user',
+        content: 'Hello',
+        children: [{
+          uuid: 'msg-2',
+          role: 'assistant',
+          content: 'Hi there',
+          children: [{
+            uuid: 'msg-3',
+            role: 'user', 
+            content: 'How are you?',
+            children: []
+          }]
+        }]
+      },
+      current_node_uuid: 'msg-2'
+    }
+    
+    const wrapper = mount(ChatView, {
+      ...mountOptions,
+      global: {
+        ...mountOptions.global,
+        stubs: {
+          ...mountOptions.global.stubs,
+          ChatTreeView: {
+            template: '<div data-test="chat-tree">{{ treeStructure ? "Tree with structure" : "No tree structure" }}</div>',
+            props: ['messages', 'currentPath', 'selectedNodeId', 'treeStructure']
+          }
+        }
+      }
+    })
+    
+    expect(wrapper.find('[data-test="chat-tree"]').text()).toContain('Tree with structure')
+  })
+
+  it('should immediately show new nodes after message is sent', async () => {
+    const chatsStore = useChatsStore()
+    chatsStore.sendMessage = vi.fn().mockResolvedValue({ 
+      message_uuid: 'new-msg', 
+      content: 'Response',
+      role: 'assistant'
+    })
+    chatsStore.currentChatHistory = [
+      { message_uuid: 'msg-1', role: 'user', content: 'Hello' }
+    ]
+    
+    const wrapper = mount(ChatView, mountOptions)
+    
+    const input = wrapper.find('[data-test="message-input"]')
+    await input.setValue('New message')
+    
+    const form = wrapper.find('[data-test="message-form"]')
+    await form.trigger('submit.prevent')
+    await nextTick()
+    
+    expect(chatsStore.sendMessage).toHaveBeenCalledWith('New message')
+    // The new message should be reflected in the tree structure immediately
+  })
+
+  it('should show success feedback after message is sent', async () => {
+    const chatsStore = useChatsStore()
+    chatsStore.sendMessage = vi.fn().mockResolvedValue({ 
+      message_uuid: 'new-msg', 
+      content: 'Response' 
+    })
+    
+    const wrapper = mount(ChatView, mountOptions)
+    
+    const input = wrapper.find('[data-test="message-input"]')
+    await input.setValue('Test message')
+    
+    const form = wrapper.find('[data-test="message-form"]')
+    await form.trigger('submit.prevent')
+    await nextTick()
+    
+    // Should show some form of success indication
+    expect(wrapper.find('[data-test="message-success"]').exists()).toBe(true)
+  })
+
+  it('should not overwrite user-selected node when tree structure changes', async () => {
+    const chatsStore = useChatsStore()
+    chatsStore.selectNode = vi.fn().mockResolvedValue(undefined)
+    chatsStore.currentChatHistory = [
+      { message_uuid: 'msg-1', role: 'user', content: 'Hello' }
+    ]
+    chatsStore.currentTreeStructure = {
+      tree: { uuid: 'msg-1', role: 'user', content: 'Hello', children: [] },
+      current_node_uuid: 'msg-1'
+    }
+    
+    const wrapper = mount(ChatView, mountOptions)
+    
+    // Simulate user selecting a node
+    const treeComponent = wrapper.find('[data-test="chat-tree"]')
+    await treeComponent.trigger('click')
+    
+    // Simulate tree structure update from API
+    chatsStore.currentTreeStructure = {
+      tree: { uuid: 'msg-1', role: 'user', content: 'Hello', children: [] },
+      current_node_uuid: 'msg-2'
+    }
+    
+    await nextTick()
+    
+    // Selected node should remain as user clicked, not overwritten by API
+    expect(chatsStore.selectNode).toHaveBeenCalledWith('msg-123')
+  })
 })

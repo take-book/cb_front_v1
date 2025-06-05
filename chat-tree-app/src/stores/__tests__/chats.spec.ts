@@ -163,27 +163,33 @@ describe('Chats Store', () => {
         content: 'This is the response'
       }
 
-      const mockPath = { path: ['msg-1', 'new-msg'] }
+      const mockHistory = {
+        messages: [
+          { message_uuid: 'user-msg', role: 'user', content: 'Hello AI!' },
+          { message_uuid: 'new-msg', role: 'assistant', content: 'This is the response' }
+        ]
+      }
+
+      const mockPath = { path: ['user-msg', 'new-msg'] }
+      const mockTreeStructure = {
+        tree: { uuid: 'user-msg', role: 'user', content: 'Hello AI!', children: [] },
+        current_node_uuid: 'new-msg'
+      }
 
       vi.mocked(chatsApi.sendMessage).mockResolvedValueOnce(mockResponse)
+      vi.mocked(chatsApi.getHistory).mockResolvedValueOnce(mockHistory)
       vi.mocked(chatsApi.getPath).mockResolvedValueOnce(mockPath)
+      vi.mocked(chatsApi.getTreeStructure).mockResolvedValueOnce(mockTreeStructure)
 
       const result = await chatsStore.sendMessage('Hello AI!')
 
       expect(result).toEqual(mockResponse)
       expect(chatsApi.sendMessage).toHaveBeenCalledWith('chat-1', { content: 'Hello AI!' })
       
-      // Should add both user message and assistant response to history
-      expect(chatsStore.currentChatHistory).toHaveLength(2)
-      expect(chatsStore.currentChatHistory[0]).toMatchObject({
-        role: 'user',
-        content: 'Hello AI!'
-      })
-      expect(chatsStore.currentChatHistory[1]).toMatchObject({
-        message_uuid: 'new-msg',
-        role: 'assistant',
-        content: 'This is the response'
-      })
+      // Should update history from API response
+      expect(chatsStore.currentChatHistory).toEqual(mockHistory.messages)
+      expect(chatsStore.currentPath).toEqual(['user-msg', 'new-msg'])
+      expect(chatsStore.currentTreeStructure).toEqual(mockTreeStructure)
     })
 
     it('should throw error if no current chat', async () => {

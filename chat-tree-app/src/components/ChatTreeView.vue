@@ -27,7 +27,7 @@
           :class="[
             'tree-node-group',
             `role-${node.message.role}`,
-            { 'selected': selectedNodeId === node.id }
+            { 'selected': effectiveSelectedNodeId === node.id }
           ]"
           @click="handleNodeClick(node.id)"
         >
@@ -35,7 +35,7 @@
             class="tree-node"
             :class="[
               `role-${node.message.role}`,
-              { 'selected': selectedNodeId === node.id }
+              { 'selected': effectiveSelectedNodeId === node.id }
             ]"
             :width="nodeWidth"
             :height="nodeHeight"
@@ -86,8 +86,8 @@ const nodeWidth = 180
 const nodeHeight = 80
 
 const tree = computed(() => {
-  // Use API tree structure if available, otherwise fallback to local building
-  if (props.treeStructure) {
+  // Always use API tree structure if available for correct tree representation
+  if (props.treeStructure && props.treeStructure.tree) {
     return convertApiTreeToRenderTree(
       props.treeStructure.tree,
       props.messages,
@@ -96,7 +96,7 @@ const tree = computed(() => {
     )
   }
   
-  // Fallback to local tree building
+  // Only fallback to local tree building if no API tree structure available
   return buildChatTree(props.messages, props.currentPath)
 })
 
@@ -110,6 +110,11 @@ const effectiveCurrentPath = computed(() => {
   }
   
   return props.currentPath
+})
+
+const effectiveSelectedNodeId = computed(() => {
+  // Prefer props.selectedNodeId if provided, otherwise use API current_node_uuid
+  return props.selectedNodeId || props.treeStructure?.current_node_uuid || null
 })
 
 const treeLayout = computed(() => {

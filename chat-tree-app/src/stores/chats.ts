@@ -95,10 +95,19 @@ export const useChatsStore = defineStore('chats', {
         throw new Error('No active chat')
       }
 
+      // Optimistically add user message to UI immediately
+      const tempUserUuid = `temp-user-${Date.now()}`
+      const userMessage: HistoryMessage = {
+        message_uuid: tempUserUuid,
+        role: 'user',
+        content
+      }
+      this.currentChatHistory.push(userMessage)
+
       try {
         const response = await chatsApi.sendMessage(this.currentChat.chat_uuid, { content })
         
-        // Reload the entire chat state to ensure consistency
+        // Reload the entire chat state to ensure consistency and get the real tree structure
         const [history, path, treeStructure] = await Promise.all([
           chatsApi.getHistory(this.currentChat.chat_uuid),
           chatsApi.getPath(this.currentChat.chat_uuid),
@@ -111,6 +120,8 @@ export const useChatsStore = defineStore('chats', {
         
         return response
       } catch (error) {
+        // Remove optimistically added user message on error
+        this.currentChatHistory = this.currentChatHistory.filter(m => m.message_uuid !== tempUserUuid)
         throw error
       }
     },
@@ -147,13 +158,15 @@ export const useChatsStore = defineStore('chats', {
       
       await chatsApi.selectNode(this.currentChat.chat_uuid, { message_uuid: messageUuid })
       
-      // Only update path and tree structure, don't reload entire chat
-      const [path, treeStructure] = await Promise.all([
+      // Update path, tree structure, and history to reflect the new selection
+      const [path, treeStructure, history] = await Promise.all([
         chatsApi.getPath(this.currentChat.chat_uuid),
-        chatsApi.getTreeStructure(this.currentChat.chat_uuid)
+        chatsApi.getTreeStructure(this.currentChat.chat_uuid),
+        chatsApi.getHistory(this.currentChat.chat_uuid)
       ])
       this.currentPath = path.path
       this.currentTreeStructure = treeStructure
+      this.currentChatHistory = history.messages
     },
 
     async retryMessage(messageId: string): Promise<MessageResponse> {
