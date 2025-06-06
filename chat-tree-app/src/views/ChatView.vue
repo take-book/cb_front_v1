@@ -5,17 +5,21 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center py-4">
           <div class="flex items-center space-x-4">
-            <RouterLink to="/chats" class="text-gray-500 hover:text-gray-700">
+            <RouterLink 
+              to="/chats" 
+              class="text-gray-500 hover:text-gray-700"
+              data-test="back-link"
+            >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
             </RouterLink>
             <h1 class="text-xl font-semibold text-gray-900">
-              {{ chatsStore.currentChat?.title || 'Chat' }}
+              {{ chatsStore.chatTitle }}
             </h1>
           </div>
           <div class="text-sm text-gray-500">
-            {{ chatsStore.currentChat?.message_count || 0 }} messages
+            {{ chatsStore.messages.length || 0 }} messages
           </div>
         </div>
       </div>
@@ -26,7 +30,7 @@
       <!-- Tree View -->
       <div class="flex-1 p-4">
         <!-- Loading State -->
-        <div v-if="chatsStore.loading" class="flex items-center justify-center h-full">
+        <div v-if="chatsStore.isLoading" class="flex items-center justify-center h-full" data-test="loading">
           <div class="text-center">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
             <p class="mt-2 text-gray-500">Loading chat...</p>
@@ -34,7 +38,7 @@
         </div>
 
         <!-- Error State -->
-        <div v-else-if="chatsStore.error" class="flex items-center justify-center h-full">
+        <div v-else-if="chatsStore.error" class="flex items-center justify-center h-full" data-test="error">
           <div class="text-center">
             <svg class="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -45,7 +49,7 @@
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="chatsStore.currentChatHistory.length === 0" class="flex items-center justify-center h-full">
+        <div v-else-if="chatsStore.messages.length === 0" class="flex items-center justify-center h-full" data-test="empty-state">
           <div class="text-center">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -58,10 +62,9 @@
         <!-- Chat Tree -->
         <ChatTreeView
           v-else
-          :messages="chatsStore.currentChatHistory"
-          :current-path="currentPath"
-          :selected-node-id="selectedNodeId"
-          :tree-structure="chatsStore.currentTreeStructure"
+          :tree-structure="chatsStore.treeStructure"
+          :selected-node-uuid="chatsStore.selectedNodeUuid"
+          :current-path="chatsStore.currentPath"
           @node-click="handleNodeClick"
         />
       </div>
@@ -69,11 +72,41 @@
       <!-- Message Input Sidebar -->
       <div class="w-96 bg-white border-l border-gray-200 flex flex-col">
         <!-- Selected Message Display -->
-        <div v-if="selectedMessage" class="p-4 border-b border-gray-200 bg-gray-50">
-          <div class="text-xs font-semibold text-gray-600 mb-1">
-            {{ selectedMessage.role === 'user' ? 'You' : 'AI' }}
+        <div v-if="selectedMessage" class="p-4 border-b border-gray-200" 
+             :class="chatsStore.isBranchingMode ? 'bg-orange-50 border-orange-200' : 'bg-gray-50'" 
+             data-test="selected-message">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-2">
+              <div class="text-xs font-semibold" 
+                   :class="chatsStore.isBranchingMode ? 'text-orange-700' : 'text-gray-600'">
+                {{ selectedMessage.role === 'user' ? 'You' : 'AI' }}
+              </div>
+              <div v-if="chatsStore.isBranchingMode" 
+                   class="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">
+                🌿 Branching mode
+              </div>
+              <div v-else 
+                   class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                ✅ Continue mode
+              </div>
+            </div>
+            <button 
+              @click="chatsStore.clearSelection()"
+              class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-white/50">
+              Clear
+            </button>
           </div>
-          <div class="text-sm text-gray-900">{{ selectedMessage.content }}</div>
+          <div class="text-sm text-gray-900 bg-white/50 rounded p-2 border">
+            {{ truncateContent(selectedMessage.content) }}
+          </div>
+          <div v-if="chatsStore.isBranchingMode" 
+               class="text-xs text-orange-600 mt-2 bg-orange-100/50 rounded p-2">
+            🌿 <strong>Branching:</strong> Your next message will create a new conversation path from this point
+          </div>
+          <div v-else 
+               class="text-xs text-green-600 mt-2 bg-green-100/50 rounded p-2">
+            ✅ <strong>Continuing:</strong> Your next message will continue the conversation normally
+          </div>
         </div>
 
         <!-- Message Input -->
@@ -88,174 +121,139 @@
               data-test="message-input"
               placeholder="Type your message here..."
               rows="4"
-              class="flex-1 resize-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="flex-1 resize-none border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              :disabled="chatsStore.isLoading"
             ></textarea>
             
-            <div class="mt-4 flex justify-end">
+            <div class="mt-4 flex justify-between items-center">
+              <div class="text-xs" 
+                   :class="chatsStore.isBranchingMode ? 'text-orange-600' : 'text-green-600'">
+                <span v-if="chatsStore.isBranchingMode">🌿 Creating new branch</span>
+                <span v-else>✅ Continuing conversation</span>
+              </div>
               <button
                 type="submit"
-                data-test="send-button"
-                :disabled="!newMessage.trim() || chatsStore.loading"
-                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                data-test="submit-button"
+                :disabled="!newMessage.trim() || chatsStore.isLoading"
+                :class="[
+                  'px-4 py-2 rounded-md font-medium transition-colors',
+                  chatsStore.isBranchingMode 
+                    ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white',
+                  (!newMessage.trim() || chatsStore.isLoading) && 'bg-gray-400 cursor-not-allowed'
+                ]"
               >
-                {{ chatsStore.loading ? 'Sending...' : 'Send' }}
+                <span v-if="chatsStore.isLoading" class="flex items-center space-x-2">
+                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Sending...</span>
+                </span>
+                <span v-else-if="chatsStore.isBranchingMode" class="flex items-center space-x-1">
+                  <span>🌿</span>
+                  <span>Branch & Send</span>
+                </span>
+                <span v-else class="flex items-center space-x-1">
+                  <span>📤</span>
+                  <span>Send</span>
+                </span>
               </button>
             </div>
           </form>
         </div>
       </div>
     </div>
-
-    <!-- Toast notifications -->
-    <Toast
-      v-for="toastItem in toast.toasts.value"
-      :key="toastItem.id"
-      :type="toastItem.type"
-      :title="toastItem.title"
-      :message="toastItem.message"
-      :duration="toastItem.duration"
-      :show="true"
-      @close="toast.removeToast(toastItem.id)"
-    />
-    
-    <!-- Success indicator for testing -->
-    <div v-if="toast.toasts.value.length > 0" data-test="message-success" class="hidden">Success</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useChatsStore } from '@/stores/chats'
-import { useToast } from '@/composables/useToast'
-import ChatTreeView from '@/components/ChatTreeView.vue'
-import Toast from '@/components/Toast.vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useChatsStore } from '../stores/chats'
+import ChatTreeView from '../components/ChatTreeView.vue'
+import type { HistoryMessage, TreeNode } from '../types/api'
 
 const route = useRoute()
+const router = useRouter()
 const chatsStore = useChatsStore()
-const toast = useToast()
 
 const newMessage = ref('')
-const selectedNodeId = ref<string | null>(null)
-const isUserSelecting = ref(false) // Flag to track user-initiated selections
 
-const currentPath = computed(() => {
-  return chatsStore.currentPath
-})
+// Load chat when route changes
+const chatUuid = computed(() => route.params.chatUuid as string)
 
-const selectedMessage = computed(() => {
-  if (!selectedNodeId.value) return null
-  
-  // First try to find in current history
-  const messageInHistory = chatsStore.currentChatHistory.find(m => m.message_uuid === selectedNodeId.value)
-  if (messageInHistory) {
-    return messageInHistory
+watch(chatUuid, async (newChatUuid) => {
+  if (newChatUuid) {
+    await chatsStore.loadCompleteChat(newChatUuid)
+  }
+}, { immediate: true })
+
+// Get selected message details
+const selectedMessage = computed((): HistoryMessage | null => {
+  if (!chatsStore.selectedNodeUuid || !chatsStore.selectedNode) {
+    return null
   }
   
-  // If not found in current history, create a placeholder based on tree structure
-  if (chatsStore.currentTreeStructure) {
-    const findMessageInTree = (node: any): any => {
-      if (node.uuid === selectedNodeId.value) {
-        // Return a placeholder message - in a real app you might fetch this from API
-        return {
-          message_uuid: node.uuid,
-          role: 'unknown',
-          content: 'Message from different branch'
-        }
-      }
-      for (const child of node.children) {
-        const found = findMessageInTree(child)
-        if (found) return found
-      }
-      return null
-    }
-    
-    return findMessageInTree(chatsStore.currentTreeStructure.tree)
-  }
-  
-  return null
-})
-
-onMounted(async () => {
-  const chatId = route.params.chatId as string
-  if (chatId) {
-    await chatsStore.loadChat(chatId)
-    // Set selectedNodeId to current node from API, or fallback to last message
-    if (chatsStore.currentTreeStructure?.current_node_uuid) {
-      selectedNodeId.value = chatsStore.currentTreeStructure.current_node_uuid
-    } else if (chatsStore.currentChatHistory.length > 0) {
-      selectedNodeId.value = chatsStore.currentChatHistory[chatsStore.currentChatHistory.length - 1].message_uuid
-    }
+  // Convert TreeNode to HistoryMessage format
+  const node = chatsStore.selectedNode
+  return {
+    message_uuid: node.uuid,
+    role: node.role,
+    content: node.content
   }
 })
 
-// Watch for changes in tree structure to update selected node (only when not user-selecting)
-watch(() => chatsStore.currentTreeStructure, (newTreeStructure, oldTreeStructure) => {
-  if (newTreeStructure?.current_node_uuid && !isUserSelecting.value) {
-    // Only update if this is an initial load or if selectedNodeId is null
-    if (!selectedNodeId.value || !oldTreeStructure) {
-      selectedNodeId.value = newTreeStructure.current_node_uuid
-    }
-  }
-}, { deep: true })
-
-// Watch for changes in chat history to update selected node (only if no tree structure)
-watch(() => chatsStore.currentChatHistory, (newHistory, oldHistory) => {
-  // Only auto-select if no tree structure available and no node is currently selected
-  if (newHistory.length > 0 && !chatsStore.currentTreeStructure?.current_node_uuid && (!selectedNodeId.value || !oldHistory || oldHistory.length === 0)) {
-    selectedNodeId.value = newHistory[newHistory.length - 1].message_uuid
-  }
-}, { deep: true })
+// Event handlers
+const handleNodeClick = (nodeUuid: string) => {
+  chatsStore.selectNode(nodeUuid)
+}
 
 const handleSendMessage = async () => {
-  if (!newMessage.value.trim()) return
+  if (!newMessage.value.trim() || !chatUuid.value) {
+    console.log('Cannot send message - missing content or chatUuid:', {
+      hasContent: !!newMessage.value.trim(),
+      chatUuid: chatUuid.value
+    })
+    return
+  }
+
+  console.log('Sending message:', {
+    content: newMessage.value.trim(),
+    chatUuid: chatUuid.value,
+    isBranchingMode: chatsStore.isBranchingMode,
+    selectedNode: chatsStore.selectedNodeUuid
+  })
 
   try {
-    isUserSelecting.value = true
+    const response = await chatsStore.sendMessage(newMessage.value.trim())
+    console.log('Message sent successfully:', response)
     
-    // Ensure the currently selected node is set before sending message
-    if (selectedNodeId.value) {
-      await chatsStore.selectNode(selectedNodeId.value)
+    if (response) {
+      newMessage.value = ''
+      
+      // Show appropriate feedback based on mode
+      if (chatsStore.isBranchingMode) {
+        console.log('🌿 New branch created! You can continue this conversation or select another node to branch again.')
+        // Auto-select the new message after branching for easy continuation
+        setTimeout(() => {
+          // The new message should be auto-selected by the store's autoSelectLatestNode
+        }, 500)
+      } else {
+        chatsStore.clearSelection()
+      }
     }
-    
-    const response = await chatsStore.sendMessage(newMessage.value)
-    newMessage.value = ''
-    
-    // Select the new assistant message after the store has been updated
-    selectedNodeId.value = response.message_uuid
-    
-    // Show success feedback
-    toast.success('Message sent', 'Your message has been sent successfully')
   } catch (error) {
     console.error('Failed to send message:', error)
-    toast.error('Failed to send message', 'Please try again')
-  } finally {
-    // Reset the flag after a short delay to allow API updates to complete
-    setTimeout(() => {
-      isUserSelecting.value = false
-    }, 200)
+    // Show error to user
+    chatsStore.error = error instanceof Error ? error.message : 'Failed to send message'
   }
 }
 
-const handleNodeClick = async (nodeId: string) => {
-  try {
-    isUserSelecting.value = true
-    selectedNodeId.value = nodeId
-    await chatsStore.selectNode(nodeId)
-    
-    // Keep the user-selected node rather than overwriting with API response
-    selectedNodeId.value = nodeId
-  } catch (error) {
-    console.error('Failed to select node:', error)
-    // Revert selectedNodeId on error
-    if (chatsStore.currentTreeStructure) {
-      selectedNodeId.value = chatsStore.currentTreeStructure.current_node_uuid
-    }
-  } finally {
-    // Reset the flag after a short delay to allow API updates to complete
-    setTimeout(() => {
-      isUserSelecting.value = false
-    }, 100)
-  }
+// Utility function to truncate content for display
+const truncateContent = (content: string): string => {
+  const maxLength = 150
+  if (content.length <= maxLength) return content
+  return content.substring(0, maxLength) + '...'
 }
 </script>

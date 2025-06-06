@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import apiClient from '@/api/client'
-import type { LoginResponse, UserInfo, UserRegisterResponse } from '@/types/api'
+import type { LoginResponse, UserInfo, UserRegisterResponse } from '../types/api'
 import { handleApiError } from '@/utils/errorHandler'
 
 export const useAuthStore = defineStore('auth', {

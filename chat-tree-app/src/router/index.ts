@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,7 +27,7 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/chats/:chatId',
+      path: '/chats/:chatUuid',
       name: 'Chat',
       component: () => import('@/views/ChatView.vue'),
       meta: { requiresAuth: true }
@@ -37,6 +37,13 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
+  // Development mode: skip authentication for now
+  if (import.meta.env.DEV) {
+    console.log('Development mode: skipping authentication')
+    next()
+    return
+  }
+
   const authStore = useAuthStore()
   
   // Initialize auth from storage if not already done

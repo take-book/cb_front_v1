@@ -85,7 +85,7 @@ describe('Auth Store', () => {
       // Set initial auth state
       authStore.accessToken = 'test-token'
       authStore.refreshToken = 'test-refresh'
-      authStore.user = { uuid: 'test', username: 'user', created_at: '2024-01-01' }
+      authStore.user = { uuid: 'test', username: 'user' }
       localStorage.setItem('access_token', 'test-token')
       localStorage.setItem('refresh_token', 'test-refresh')
 

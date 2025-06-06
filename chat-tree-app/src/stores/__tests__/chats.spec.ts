@@ -1,263 +1,281 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useChatsStore } from '../chats'
-import { chatsApi } from '@/api/chats'
+import type { CompleteChatDataResponse, TreeNode, HistoryMessage } from '../../types/api'
 
-vi.mock('@/api/chats')
+// Mock the API
+vi.mock('../../api/chats', () => ({
+  chatApi: {
+    getCompleteChat: vi.fn(),
+    sendMessage: vi.fn(),
+    createChat: vi.fn(),
+    updateChat: vi.fn(),
+    deleteChat: vi.fn(),
+    getRecentChats: vi.fn(),
+    getChats: vi.fn()
+  }
+}))
 
-describe('Chats Store', () => {
+describe('Chats Store (Updated)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
+  const mockTreeNode: TreeNode = {
+    uuid: 'root',
+    role: 'system',
+    content: '',
+    children: [
+      {
+        uuid: 'msg1',
+        role: 'user',
+        content: 'Hello',
+        children: [
+          {
+            uuid: 'msg2',
+            role: 'assistant',
+            content: 'Hi there!',
+            children: []
+          }
+        ]
+      }
+    ]
+  }
+
+  const mockCompleteData: CompleteChatDataResponse = {
+    chat_uuid: 'test-chat',
+    title: 'Test Chat',
+    system_prompt: 'You are a helpful assistant',
+    messages: [
+      { message_uuid: 'msg1', role: 'user', content: 'Hello' },
+      { message_uuid: 'msg2', role: 'assistant', content: 'Hi there!' }
+    ],
+    tree_structure: mockTreeNode,
+    metadata: { created_at: '2024-01-01' }
+  }
+
   describe('Initial State', () => {
     it('should have correct initial state', () => {
-      const chatsStore = useChatsStore()
+      const store = useChatsStore()
       
-      expect(chatsStore.chats).toEqual([])
-      expect(chatsStore.currentChat).toBeNull()
-      expect(chatsStore.currentChatHistory).toEqual([])
-      expect(chatsStore.currentPage).toBe(1)
-      expect(chatsStore.totalPages).toBe(1)
-      expect(chatsStore.loading).toBe(false)
-      expect(chatsStore.error).toBeNull()
+      expect(store.currentChatUuid).toBeNull()
+      expect(store.chatData).toBeNull()
+      expect(store.selectedNodeUuid).toBeNull()
+      expect(store.currentPath).toEqual([])
+      expect(store.isLoading).toBe(false)
+      expect(store.error).toBeNull()
+      expect(store.recentChats).toEqual([])
     })
   })
 
-  describe('Fetch Chats', () => {
+  describe('loadCompleteChat', () => {
+    it('should load complete chat data successfully', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      expect(store.currentChatUuid).toBe('test-chat')
+      expect(store.chatData).toEqual(mockCompleteData)
+      expect(store.isLoading).toBe(false)
+      expect(store.error).toBeNull()
+    })
+
+    it('should handle loading error', async () => {
+      const { chatApi } = await import('../../api/chats')
+      const error = new Error('Failed to load')
+      vi.mocked(chatApi.getCompleteChat).mockRejectedValueOnce(error)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      expect(store.error).toBe('Failed to load')
+      expect(store.isLoading).toBe(false)
+    })
+  })
+
+  describe('sendMessage', () => {
+    it('should send message and reload chat data', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      vi.mocked(chatApi.sendMessage).mockResolvedValueOnce({
+        message_uuid: 'new-msg',
+        content: 'AI response'
+      })
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      await store.sendMessage('How are you?')
+      
+      expect(chatApi.sendMessage).toHaveBeenCalledWith('test-chat', 'How are you?')
+      expect(chatApi.getCompleteChat).toHaveBeenCalledTimes(2) // Once for load, once for reload
+    })
+
+    it('should return null when no chat is selected', async () => {
+      const store = useChatsStore()
+      const result = await store.sendMessage('Hello')
+      
+      expect(result).toBeNull()
+      expect(store.error).toBe('No chat selected')
+    })
+  })
+
+  describe('createNewChat', () => {
+    it('should create chat with initial message', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.createChat).mockResolvedValueOnce({ chat_uuid: 'new-chat' })
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      const result = await store.createNewChat('Hello, world!')
+      
+      expect(chatApi.createChat).toHaveBeenCalledWith('Hello, world!')
+      expect(result).toBe('new-chat')
+    })
+
+    it('should create chat without initial message', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.createChat).mockResolvedValueOnce({ chat_uuid: 'new-chat' })
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      const result = await store.createNewChat()
+      
+      expect(chatApi.createChat).toHaveBeenCalledWith(undefined)
+      expect(result).toBe('new-chat')
+    })
+  })
+
+  describe('fetchRecentChats', () => {
     it('should fetch recent chats successfully', async () => {
-      const chatsStore = useChatsStore()
+      const { chatApi } = await import('../../api/chats')
       const mockResponse = {
         items: [
-          {
-            chat_uuid: 'chat-1',
-            title: 'Chat 1',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-            message_count: 5
-          },
-          {
-            chat_uuid: 'chat-2',
-            title: 'Chat 2',
-            created_at: '2024-01-02T00:00:00Z',
-            updated_at: '2024-01-02T00:00:00Z',
-            message_count: 3
-          }
+          { chat_uuid: 'chat1', title: 'Chat 1', updated_at: '2024-01-01', message_count: 5 },
+          { chat_uuid: 'chat2', title: 'Chat 2', updated_at: '2024-01-02', message_count: 3 }
         ],
         total: 2,
         page: 1,
         limit: 20,
         pages: 1
       }
-
-      vi.mocked(chatsApi.getRecentChats).mockResolvedValueOnce(mockResponse)
-
-      await chatsStore.fetchRecentChats()
-
-      expect(chatsStore.chats).toEqual(mockResponse.items)
-      expect(chatsStore.currentPage).toBe(1)
-      expect(chatsStore.totalPages).toBe(1)
-      expect(chatsStore.loading).toBe(false)
-      expect(chatsStore.error).toBeNull()
+      
+      vi.mocked(chatApi.getRecentChats).mockResolvedValueOnce(mockResponse)
+      
+      const store = useChatsStore()
+      await store.fetchRecentChats()
+      
+      expect(store.recentChats).toHaveLength(2)
+      expect(store.totalChats).toBe(2)
+      expect(store.currentPage).toBe(1)
     })
 
     it('should handle fetch error', async () => {
-      const chatsStore = useChatsStore()
+      const { chatApi } = await import('../../api/chats')
       const error = new Error('Failed to fetch chats')
       
-      vi.mocked(chatsApi.getRecentChats).mockRejectedValueOnce(error)
-
-      await chatsStore.fetchRecentChats()
-
-      expect(chatsStore.chats).toEqual([])
-      expect(chatsStore.error).toBe('Failed to fetch chats')
-      expect(chatsStore.loading).toBe(false)
-    })
-  })
-
-  describe('Create Chat', () => {
-    it('should create a new chat successfully', async () => {
-      const chatsStore = useChatsStore()
-      const mockResponse = {
-        chat_uuid: 'new-chat-uuid'
-      }
-
-      vi.mocked(chatsApi.createChat).mockResolvedValueOnce(mockResponse)
-
-      const result = await chatsStore.createChat('Hello, world!')
-
-      expect(result).toEqual(mockResponse)
-      expect(chatsApi.createChat).toHaveBeenCalledWith({ initial_message: 'Hello, world!' })
-    })
-
-    it('should create chat without initial message', async () => {
-      const chatsStore = useChatsStore()
-      const mockResponse = {
-        chat_uuid: 'new-chat-uuid'
-      }
-
-      vi.mocked(chatsApi.createChat).mockResolvedValueOnce(mockResponse)
-
-      const result = await chatsStore.createChat()
-
-      expect(result).toEqual(mockResponse)
-      expect(chatsApi.createChat).toHaveBeenCalledWith({})
-    })
-  })
-
-  describe('Load Chat', () => {
-    it('should load chat metadata and history', async () => {
-      const chatsStore = useChatsStore()
-      const mockMetadata = {
-        chat_uuid: 'chat-1',
-        title: 'Test Chat',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        message_count: 2,
-        owner_id: 'user-1'
-      }
-      const mockHistory = {
-        messages: [
-          {
-            message_uuid: 'msg-1',
-            role: 'user',
-            content: 'Hello'
-          },
-          {
-            message_uuid: 'msg-2',
-            role: 'assistant',
-            content: 'Hi there!'
-          }
-        ]
-      }
-
-      const mockPath = { path: ['msg-1', 'msg-2'] }
-
-      vi.mocked(chatsApi.getChatMetadata).mockResolvedValueOnce(mockMetadata)
-      vi.mocked(chatsApi.getHistory).mockResolvedValueOnce(mockHistory)
-      vi.mocked(chatsApi.getPath).mockResolvedValueOnce(mockPath)
-
-      await chatsStore.loadChat('chat-1')
-
-      expect(chatsStore.currentChat).toEqual(mockMetadata)
-      expect(chatsStore.currentChatHistory).toEqual(mockHistory.messages)
-      expect(chatsStore.loading).toBe(false)
-    })
-  })
-
-  describe('Send Message', () => {
-    it('should send message and update history', async () => {
-      const chatsStore = useChatsStore()
-      chatsStore.currentChat = {
-        chat_uuid: 'chat-1',
-        title: 'Test Chat',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        message_count: 0,
-        owner_id: 'user-1'
-      }
+      vi.mocked(chatApi.getRecentChats).mockRejectedValueOnce(error)
       
-      const mockResponse = {
-        message_uuid: 'new-msg',
-        content: 'This is the response'
-      }
-
-      const mockHistory = {
-        messages: [
-          { message_uuid: 'user-msg', role: 'user', content: 'Hello AI!' },
-          { message_uuid: 'new-msg', role: 'assistant', content: 'This is the response' }
-        ]
-      }
-
-      const mockPath = { path: ['user-msg', 'new-msg'] }
-      const mockTreeStructure = {
-        tree: { uuid: 'user-msg', role: 'user', content: 'Hello AI!', children: [] },
-        current_node_uuid: 'new-msg'
-      }
-
-      vi.mocked(chatsApi.sendMessage).mockResolvedValueOnce(mockResponse)
-      vi.mocked(chatsApi.getHistory).mockResolvedValueOnce(mockHistory)
-      vi.mocked(chatsApi.getPath).mockResolvedValueOnce(mockPath)
-      vi.mocked(chatsApi.getTreeStructure).mockResolvedValueOnce(mockTreeStructure)
-
-      const result = await chatsStore.sendMessage('Hello AI!')
-
-      expect(result).toEqual(mockResponse)
-      expect(chatsApi.sendMessage).toHaveBeenCalledWith('chat-1', { content: 'Hello AI!' })
+      const store = useChatsStore()
+      await store.fetchRecentChats()
       
-      // Should update history from API response
-      expect(chatsStore.currentChatHistory).toEqual(mockHistory.messages)
-      expect(chatsStore.currentPath).toEqual(['user-msg', 'new-msg'])
-      expect(chatsStore.currentTreeStructure).toEqual(mockTreeStructure)
-    })
-
-    it('should throw error if no current chat', async () => {
-      const chatsStore = useChatsStore()
-      
-      await expect(chatsStore.sendMessage('Hello')).rejects.toThrow('No active chat')
+      expect(store.error).toBe('Failed to fetch chats')
     })
   })
 
-  describe('Delete Chat', () => {
-    it('should delete chat and remove from list', async () => {
-      const chatsStore = useChatsStore()
-      chatsStore.chats = [
-        {
-          chat_uuid: 'chat-1',
-          title: 'Chat 1',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-          message_count: 5
-        },
-        {
-          chat_uuid: 'chat-2',
-          title: 'Chat 2',
-          created_at: '2024-01-02T00:00:00Z',
-          updated_at: '2024-01-02T00:00:00Z',
-          message_count: 3
-        }
-      ]
+  describe('Navigation', () => {
+    it('should select node and update path', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      store.selectNode('msg1')
+      
+      expect(store.selectedNodeUuid).toBe('msg1')
+      expect(store.currentPath).toHaveLength(2) // root + msg1
+    })
 
-      vi.mocked(chatsApi.deleteChat).mockResolvedValueOnce(undefined)
+    it('should find node in tree', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      const foundNode = store.findNodeInTree('msg2')
+      
+      expect(foundNode).toBeDefined()
+      expect(foundNode?.content).toBe('Hi there!')
+    })
 
-      await chatsStore.deleteChat('chat-1')
-
-      expect(chatsStore.chats).toHaveLength(1)
-      expect(chatsStore.chats[0].chat_uuid).toBe('chat-2')
-      expect(chatsApi.deleteChat).toHaveBeenCalledWith('chat-1')
+    it('should determine if in branching mode', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      // When no node is selected, not in branching mode
+      expect(store.isBranchingMode).toBe(false)
+      
+      // When a non-leaf node is selected, in branching mode
+      store.selectNode('msg1')
+      expect(store.isBranchingMode).toBe(true)
+      
+      // When leaf node is selected, not in branching mode
+      store.selectNode('msg2')
+      expect(store.isBranchingMode).toBe(false)
     })
   })
 
-  describe('Search Chats', () => {
+  describe('deleteChat', () => {
+    it('should delete chat and refresh list', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.deleteChat).mockResolvedValueOnce(undefined)
+      vi.mocked(chatApi.getRecentChats).mockResolvedValueOnce({
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        pages: 1
+      })
+      
+      const store = useChatsStore()
+      store.currentChatUuid = 'chat-to-delete'
+      
+      await store.deleteChat('chat-to-delete')
+      
+      expect(chatApi.deleteChat).toHaveBeenCalledWith('chat-to-delete')
+      expect(store.currentChatUuid).toBeNull() // Reset when current chat deleted
+    })
+  })
+
+  describe('searchChats', () => {
     it('should search chats with query', async () => {
-      const chatsStore = useChatsStore()
+      const { chatApi } = await import('../../api/chats')
       const mockResponse = {
         items: [
-          {
-            chat_uuid: 'chat-1',
-            title: 'Matching Chat',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-            message_count: 5
-          }
+          { chat_uuid: 'chat1', title: 'Matching Chat', updated_at: '2024-01-01', message_count: 5 }
         ],
         total: 1,
         page: 1,
         limit: 20,
         pages: 1
       }
-
-      vi.mocked(chatsApi.getChats).mockResolvedValueOnce(mockResponse)
-
-      await chatsStore.searchChats('test query')
-
-      expect(chatsStore.chats).toEqual(mockResponse.items)
-      expect(chatsApi.getChats).toHaveBeenCalledWith({
-        q: 'test query',
-        page: 1,
-        limit: 20
-      })
+      
+      vi.mocked(chatApi.getChats).mockResolvedValueOnce(mockResponse)
+      
+      const store = useChatsStore()
+      await store.searchChats('test query')
+      
+      expect(chatApi.getChats).toHaveBeenCalledWith({ q: 'test query', page: 1, limit: 20 })
+      expect(store.recentChats).toHaveLength(1)
+      expect(store.recentChats[0].title).toBe('Matching Chat')
     })
   })
 })

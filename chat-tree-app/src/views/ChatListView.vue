@@ -24,7 +24,7 @@
       <div class="mb-6 flex flex-col sm:flex-row gap-4">
         <button
           @click="handleNewChat"
-          :disabled="chatsStore.loading"
+          :disabled="chatsStore.isLoading"
           class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
         >
           New Chat
@@ -40,17 +40,36 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="chatsStore.loading" class="text-center py-12">
+      <div v-if="chatsStore.isLoading" class="text-center py-12">
         <p class="text-gray-500">Loading...</p>
       </div>
 
       <!-- Error State -->
       <div v-else-if="chatsStore.error" class="bg-red-50 border border-red-200 rounded-md p-4">
-        <p class="text-red-600">{{ chatsStore.error }}</p>
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Backend Server Error</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ chatsStore.error }}</p>
+              <p class="mt-1">Make sure the backend server is running at <code class="bg-red-100 px-1 rounded">http://localhost:8000</code></p>
+            </div>
+            <div class="mt-4">
+              <button 
+                @click="chatsStore.fetchRecentChats()"
+                class="bg-red-100 text-red-800 px-3 py-1 rounded text-sm hover:bg-red-200"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="chatsStore.chats.length === 0" class="text-center py-12">
+      <div v-else-if="chatsStore.recentChats.length === 0" class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
@@ -61,7 +80,7 @@
       <!-- Chat List -->
       <div v-else class="space-y-4">
         <div
-          v-for="chat in chatsStore.chats"
+          v-for="chat in chatsStore.recentChats"
           :key="chat.chat_uuid"
           data-test="chat-item"
           class="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
@@ -114,9 +133,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useChatsStore } from '@/stores/chats'
-import { useAuthStore } from '@/stores/auth'
-import { healthCheck } from '@/api/client'
+import { useChatsStore } from '../stores/chats'
+import { useAuthStore } from '../stores/auth'
+import { healthCheck } from '../api/client'
 
 const router = useRouter()
 const chatsStore = useChatsStore()
@@ -125,8 +144,13 @@ const authStore = useAuthStore()
 const searchQuery = ref('')
 let searchTimeout: number | undefined
 
-onMounted(() => {
-  chatsStore.fetchRecentChats()
+onMounted(async () => {
+  try {
+    await chatsStore.fetchRecentChats()
+  } catch (error) {
+    console.error('Failed to load chats:', error)
+    // Show a user-friendly error message
+  }
 })
 
 const handleNewChat = async () => {
@@ -134,12 +158,13 @@ const handleNewChat = async () => {
     console.log('Creating new chat...')
     console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
     
-    chatsStore.loading = true
-    const response = await chatsStore.createChat()
-    console.log('Chat created successfully:', response)
-    console.log('Navigating to:', `/chats/${response.chat_uuid}`)
-    await router.push(`/chats/${response.chat_uuid}`)
-    console.log('Navigation complete')
+    const chatUuid = await chatsStore.createNewChat()
+    if (chatUuid) {
+      console.log('Chat created successfully:', chatUuid)
+      console.log('Navigating to:', `/chats/${chatUuid}`)
+      await router.push(`/chats/${chatUuid}`)
+      console.log('Navigation complete')
+    }
   } catch (error: any) {
     console.error('Failed to create chat - Full error object:', error)
     
@@ -165,8 +190,6 @@ const handleNewChat = async () => {
       console.error('Request config:', error.config)
       alert(`Failed to create chat: ${error.message}`)
     }
-  } finally {
-    chatsStore.loading = false
   }
 }
 

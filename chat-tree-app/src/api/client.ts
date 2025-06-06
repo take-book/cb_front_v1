@@ -91,4 +91,34 @@ axios.defaults.baseURL = API_BASE_URL
 // Log API base URL for debugging
 console.log('API Base URL:', API_BASE_URL)
 
+// Auth API
+export const authApi = {
+  async login(username: string, password: string) {
+    const response = await axios.post('/api/v1/auth/login', 
+      new URLSearchParams({
+        username,
+        password,
+        grant_type: 'password'
+      }),
+      {
+        baseURL: API_BASE_URL,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    )
+    return response.data
+  },
+
+  async refresh() {
+    const response = await apiClient.post('/api/v1/auth/refresh')
+    return response.data
+  },
+
+  async me() {
+    const response = await apiClient.get('/api/v1/auth/me')
+    return response.data
+  }
+}
+
 export default apiClient
