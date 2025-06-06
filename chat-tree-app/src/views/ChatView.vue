@@ -77,18 +77,24 @@
         <div class="absolute inset-y-0 -left-1 -right-1 z-10"></div>
       </div>
 
-      <!-- Message Input Sidebar -->
+      <!-- Right Panel: Message Stream + Input -->
       <div class="bg-white border-l border-gray-200 flex flex-col" :style="{ width: `${rightPanelWidth}px` }">
-        <!-- Selected Message Display -->
-        <div v-if="selectedMessage" class="p-4 border-b border-gray-200" 
-             :class="chatsStore.isBranchingMode ? 'bg-orange-50 border-orange-200' : 'bg-gray-50'" 
-             data-test="selected-message">
-          <div class="flex items-center justify-between mb-2">
+        <!-- Message Stream (Top) -->
+        <div class="flex-1 min-h-0">
+          <MessageStream
+            :messages="conversationMessages"
+            :selected-message-uuid="chatsStore.selectedNodeUuid"
+            :is-branching-mode="chatsStore.isBranchingMode"
+            @select-message="handleMessageSelect"
+          />
+        </div>
+
+        <!-- Mode Indicator -->
+        <div v-if="chatsStore.selectedNodeUuid" 
+             class="px-4 py-2 border-t border-b"
+             :class="chatsStore.isBranchingMode ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'">
+          <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <div class="text-xs font-semibold" 
-                   :class="chatsStore.isBranchingMode ? 'text-orange-700' : 'text-gray-600'">
-                {{ selectedMessage.role === 'user' ? 'You' : 'AI' }}
-              </div>
               <div v-if="chatsStore.isBranchingMode" 
                    class="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full font-medium">
                 🌿 Branching mode
@@ -104,69 +110,72 @@
               Clear
             </button>
           </div>
-          <div class="text-sm text-gray-900 bg-white/50 rounded p-2 border markdown-display">
-            <MarkdownContent :content="selectedMessage.content" />
-          </div>
-          <div v-if="chatsStore.isBranchingMode" 
-               class="text-xs text-orange-600 mt-2 bg-orange-100/50 rounded p-2">
-            🌿 <strong>Branching:</strong> Your next message will create a new conversation path from this point
-          </div>
-          <div v-else 
-               class="text-xs text-green-600 mt-2 bg-green-100/50 rounded p-2">
-            ✅ <strong>Continuing:</strong> Your next message will continue the conversation normally
+          <div class="text-xs mt-1" 
+               :class="chatsStore.isBranchingMode ? 'text-orange-600' : 'text-green-600'">
+            <span v-if="chatsStore.isBranchingMode">
+              🌿 Your next message will create a new conversation branch
+            </span>
+            <span v-else>
+              ✅ Your next message will continue the conversation normally  
+            </span>
           </div>
         </div>
 
-        <!-- Message Input -->
-        <div class="flex-1 flex flex-col p-4">
-          <form @submit.prevent="handleSendMessage" data-test="message-form" class="h-full flex flex-col">
-            <label for="message" class="block text-sm font-medium text-gray-700 mb-2">
-              Send a message
-            </label>
-            <textarea
-              id="message"
-              v-model="newMessage"
-              data-test="message-input"
-              placeholder="Type your message here..."
-              rows="4"
-              class="flex-1 resize-none border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              :disabled="chatsStore.isLoading"
-            ></textarea>
-            
-            <div class="mt-4 flex justify-between items-center">
+        <!-- Compact Message Input (Bottom) -->
+        <div class="flex-shrink-0 p-4 bg-gray-50 border-t border-gray-200">
+          <form @submit.prevent="handleSendMessage" data-test="message-form">
+            <div class="flex space-x-2">
+              <div class="flex-1">
+                <textarea
+                  id="message"
+                  v-model="newMessage"
+                  data-test="message-input"
+                  placeholder="Type your message here..."
+                  rows="3"
+                  class="w-full resize-none border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  :disabled="chatsStore.isLoading"
+                  @keydown.meta.enter="handleSendMessage"
+                  @keydown.ctrl.enter="handleSendMessage"
+                ></textarea>
+              </div>
+              <div class="flex flex-col justify-end">
+                <button
+                  type="submit"
+                  data-test="submit-button"
+                  :disabled="!newMessage.trim() || chatsStore.isLoading"
+                  :class="[
+                    'px-3 py-2 rounded-md font-medium transition-colors text-sm',
+                    chatsStore.isBranchingMode 
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white',
+                    (!newMessage.trim() || chatsStore.isLoading) && 'bg-gray-400 cursor-not-allowed'
+                  ]"
+                >
+                  <span v-if="chatsStore.isLoading" class="flex items-center space-x-1">
+                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>...</span>
+                  </span>
+                  <span v-else-if="chatsStore.isBranchingMode">
+                    🌿 Branch
+                  </span>
+                  <span v-else>
+                    📤 Send
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+              <div class="text-xs text-gray-500">
+                ⌘+Enter or Ctrl+Enter to send
+              </div>
               <div class="text-xs" 
                    :class="chatsStore.isBranchingMode ? 'text-orange-600' : 'text-green-600'">
                 <span v-if="chatsStore.isBranchingMode">🌿 Creating new branch</span>
                 <span v-else>✅ Continuing conversation</span>
               </div>
-              <button
-                type="submit"
-                data-test="submit-button"
-                :disabled="!newMessage.trim() || chatsStore.isLoading"
-                :class="[
-                  'px-4 py-2 rounded-md font-medium transition-colors',
-                  chatsStore.isBranchingMode 
-                    ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white',
-                  (!newMessage.trim() || chatsStore.isLoading) && 'bg-gray-400 cursor-not-allowed'
-                ]"
-              >
-                <span v-if="chatsStore.isLoading" class="flex items-center space-x-2">
-                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Sending...</span>
-                </span>
-                <span v-else-if="chatsStore.isBranchingMode" class="flex items-center space-x-1">
-                  <span>🌿</span>
-                  <span>Branch & Send</span>
-                </span>
-                <span v-else class="flex items-center space-x-1">
-                  <span>📤</span>
-                  <span>Send</span>
-                </span>
-              </button>
             </div>
           </form>
         </div>
@@ -180,7 +189,9 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatsStore } from '../stores/chats'
 import ChatTreeView from '../components/ChatTreeView.vue'
+import MessageStream from '../components/MessageStream.vue'
 import MarkdownContent from '../components/MarkdownContent.vue'
+import { getBranchConversationThread } from '../utils/treeHelpers'
 import type { HistoryMessage, TreeNode } from '../types/api'
 
 const route = useRoute()
@@ -190,9 +201,9 @@ const chatsStore = useChatsStore()
 const newMessage = ref('')
 const mainContent = ref<HTMLElement>()
 
-// Resizable panels state
-const leftPanelWidth = ref(window.innerWidth - 500) // Default: window width - 500px for right panel
-const rightPanelWidth = ref(400) // Default right panel width
+// Resizable panels state  
+const leftPanelWidth = ref(Math.max(300, window.innerWidth - 600)) // Default: window width - 600px for right panel
+const rightPanelWidth = ref(500) // Default right panel width (increased to accommodate message stream)
 const isResizing = ref(false)
 
 // Load chat when route changes
@@ -204,7 +215,16 @@ watch(chatUuid, async (newChatUuid) => {
   }
 }, { immediate: true })
 
-// Get selected message details
+// Get conversation messages for the current thread
+const conversationMessages = computed((): HistoryMessage[] => {
+  return getBranchConversationThread(
+    chatsStore.treeStructure,
+    chatsStore.messages,
+    chatsStore.selectedNodeUuid
+  )
+})
+
+// Get selected message details (keeping for compatibility)
 const selectedMessage = computed((): HistoryMessage | null => {
   if (!chatsStore.selectedNodeUuid || !chatsStore.selectedNode) {
     return null
@@ -222,6 +242,10 @@ const selectedMessage = computed((): HistoryMessage | null => {
 // Event handlers
 const handleNodeClick = (nodeUuid: string) => {
   chatsStore.selectNode(nodeUuid)
+}
+
+const handleMessageSelect = (messageUuid: string) => {
+  chatsStore.selectNode(messageUuid)
 }
 
 const handleSendMessage = async () => {
@@ -286,11 +310,11 @@ const startResize = (e: MouseEvent) => {
     const containerWidth = mainContent.value.offsetWidth
     
     // Calculate new widths with constraints
-    const newLeftWidth = Math.max(300, Math.min(containerWidth - 350, startLeftWidth + deltaX))
+    const newLeftWidth = Math.max(300, Math.min(containerWidth - 450, startLeftWidth + deltaX))
     const newRightWidth = containerWidth - newLeftWidth - 5 // 5px for divider
     
     leftPanelWidth.value = newLeftWidth
-    rightPanelWidth.value = Math.max(350, newRightWidth)
+    rightPanelWidth.value = Math.max(450, newRightWidth)
   }
 
   const handleMouseUp = () => {
@@ -323,7 +347,7 @@ const handleWindowResize = () => {
   // Adjust panel widths to fit new window size
   const totalWidth = window.innerWidth
   const minLeftWidth = 300
-  const minRightWidth = 350
+  const minRightWidth = 450
   
   if (leftPanelWidth.value + rightPanelWidth.value + 5 > totalWidth) {
     const availableWidth = totalWidth - 5

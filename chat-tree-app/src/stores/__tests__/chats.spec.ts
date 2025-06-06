@@ -110,7 +110,7 @@ describe('Chats Store (Updated)', () => {
       
       await store.sendMessage('How are you?')
       
-      expect(chatApi.sendMessage).toHaveBeenCalledWith('test-chat', 'How are you?')
+      expect(chatApi.sendMessage).toHaveBeenCalledWith('test-chat', 'How are you?', null)
       expect(chatApi.getCompleteChat).toHaveBeenCalledTimes(2) // Once for load, once for reload
     })
 

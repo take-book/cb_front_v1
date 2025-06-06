@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '../auth'
 import axios from 'axios'
+import { authApi } from '@/api/client'
 
 vi.mock('axios')
 vi.mock('@/api/client', () => ({
@@ -10,6 +11,11 @@ vi.mock('@/api/client', () => ({
       request: { use: vi.fn() },
       response: { use: vi.fn() }
     }
+  },
+  authApi: {
+    login: vi.fn(),
+    refresh: vi.fn(),
+    me: vi.fn()
   }
 }))
 
@@ -49,8 +55,8 @@ describe('Auth Store', () => {
         }
       }
 
-      vi.mocked(axios.post).mockResolvedValueOnce(mockLoginResponse)
-      vi.mocked(axios.get).mockResolvedValueOnce(mockUserResponse)
+      vi.mocked(authApi.login).mockResolvedValueOnce(mockLoginResponse.data)
+      vi.mocked(authApi.me).mockResolvedValueOnce(mockUserResponse.data)
 
       await authStore.login('testuser', 'password123')
 

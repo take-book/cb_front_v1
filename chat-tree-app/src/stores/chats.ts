@@ -80,7 +80,9 @@ export const useChatsStore = defineStore('chats', () => {
       
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load chat'
-      console.error('Failed to load chat:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to load chat:', err)
+      }
     } finally {
       isLoading.value = false
     }
@@ -102,10 +104,6 @@ export const useChatsStore = defineStore('chats', () => {
       if (selectedNodeUuid.value && isBranchingMode.value) {
         // In branching mode, use the selected node as parent
         parentMessageUuid = selectedNodeUuid.value
-        console.log('Branching from node:', selectedNodeUuid.value)
-      } else {
-        // In normal mode, use the current node or null for latest message
-        console.log('Continuing conversation normally')
       }
 
       const response = await chatApi.sendMessage(
@@ -114,8 +112,8 @@ export const useChatsStore = defineStore('chats', () => {
         parentMessageUuid
       )
       
-      // Show success message for branching
-      if (parentMessageUuid) {
+      // Success message for branching only in development
+      if (parentMessageUuid && import.meta.env.DEV) {
         console.log('🌿 Branch created successfully! New conversation path started.')
       }
       
@@ -125,7 +123,9 @@ export const useChatsStore = defineStore('chats', () => {
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to send message'
-      console.error('Failed to send message:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to send message:', err)
+      }
       return null
     } finally {
       isLoading.value = false
@@ -145,7 +145,9 @@ export const useChatsStore = defineStore('chats', () => {
       return response.chat_uuid
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create chat'
-      console.error('Failed to create chat:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to create chat:', err)
+      }
       return null
     } finally {
       isLoading.value = false
@@ -168,7 +170,9 @@ export const useChatsStore = defineStore('chats', () => {
       await loadCompleteChat(currentChatUuid.value)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update chat'
-      console.error('Failed to update chat:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to update chat:', err)
+      }
     }
   }
 
@@ -186,7 +190,9 @@ export const useChatsStore = defineStore('chats', () => {
       
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete chat'
-      console.error('Failed to delete chat:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to delete chat:', err)
+      }
     }
   }
 
@@ -202,7 +208,9 @@ export const useChatsStore = defineStore('chats', () => {
       currentPage.value = response.page
       totalPages.value = response.pages
     } catch (err: any) {
-      console.error('Failed to fetch chats:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch chats:', err)
+      }
       
       if (err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK') {
         error.value = 'Cannot connect to backend server. Please ensure it is running on port 8000.'
@@ -230,7 +238,9 @@ export const useChatsStore = defineStore('chats', () => {
       totalPages.value = response.pages
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to search chats'
-      console.error('Failed to search chats:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to search chats:', err)
+      }
     } finally {
       isLoading.value = false
     }
@@ -240,7 +250,9 @@ export const useChatsStore = defineStore('chats', () => {
   function selectNode(nodeUuid: string) {
     selectedNodeUuid.value = nodeUuid
     currentPath.value = getPathToNode(nodeUuid)
-    console.log('Node selected for branching:', nodeUuid)
+    if (import.meta.env.DEV) {
+      console.log('Node selected for branching:', nodeUuid)
+    }
   }
 
   function clearSelection() {

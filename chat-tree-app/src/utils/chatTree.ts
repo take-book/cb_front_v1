@@ -1,28 +1,35 @@
-import type { HistoryMessage } from '@/types/api'
+import type { HistoryMessage, TreeNode as ApiTreeNode } from '@/types/api'
 
-export interface TreeNode {
+// Extended TreeNode for UI layout (extends the API TreeNode)
+export interface LayoutTreeNode extends ApiTreeNode {
   id: string
   message: HistoryMessage
-  children: TreeNode[]
-  parent?: TreeNode
+  children: LayoutTreeNode[]
+  parent?: LayoutTreeNode
   x?: number
   y?: number
   level: number
 }
 
+// Re-export the API TreeNode for clarity
+export type { ApiTreeNode as TreeNode } from '@/types/api'
+
 export interface TreeLayout {
-  nodes: TreeNode[]
+  nodes: LayoutTreeNode[]
   width: number
   height: number
 }
 
-export function buildChatTree(messages: HistoryMessage[], currentPath: string[]): TreeNode {
+export function buildChatTree(messages: HistoryMessage[], currentPath: string[]): LayoutTreeNode {
   // Create nodes map
-  const nodesMap = new Map<string, TreeNode>()
+  const nodesMap = new Map<string, LayoutTreeNode>()
   
   // Initialize root node
-  const root: TreeNode = {
+  const root: LayoutTreeNode = {
     id: 'root',
+    uuid: 'root',
+    role: 'system',
+    content: 'Chat Start',
     message: {
       message_uuid: 'root',
       role: 'system',
@@ -38,8 +45,11 @@ export function buildChatTree(messages: HistoryMessage[], currentPath: string[])
   currentPath.forEach((messageId, index) => {
     const message = messages.find(m => m.message_uuid === messageId)
     if (message) {
-      const node: TreeNode = {
+      const node: LayoutTreeNode = {
         id: messageId,
+        uuid: messageId,
+        role: message.role,
+        content: message.content,
         message,
         children: [],
         parent: currentParent,
@@ -67,8 +77,11 @@ export function buildChatTree(messages: HistoryMessage[], currentPath: string[])
   })
   
   orphanedMessages.forEach(message => {
-    const node: TreeNode = {
+    const node: LayoutTreeNode = {
       id: message.message_uuid,
+      uuid: message.message_uuid,
+      role: message.role,
+      content: message.content,
       message,
       children: [],
       level: 1 // Will be updated based on actual parent
@@ -95,9 +108,9 @@ function findBestParent(
   orphanMessage: HistoryMessage, 
   allMessages: HistoryMessage[], 
   currentPath: string[], 
-  nodesMap: Map<string, TreeNode>,
-  root: TreeNode
-): TreeNode {
+  nodesMap: Map<string, LayoutTreeNode>,
+  root: LayoutTreeNode
+): LayoutTreeNode {
   // Create a chronological index of messages
   const messageIndices = new Map<string, number>()
   allMessages.forEach((msg, index) => {
@@ -171,13 +184,13 @@ function canBeChildOf(childMessage: HistoryMessage, parentMessage: HistoryMessag
   return false
 }
 
-export function calculateTreeLayout(root: TreeNode, nodeWidth = 200, nodeHeight = 100, horizontalSpacing = 50, verticalSpacing = 50): TreeLayout {
-  const nodes: TreeNode[] = []
+export function calculateTreeLayout(root: LayoutTreeNode, nodeWidth = 200, nodeHeight = 100, horizontalSpacing = 50, verticalSpacing = 50): TreeLayout {
+  const nodes: LayoutTreeNode[] = []
   let maxWidth = 0
   let maxHeight = 0
   
   // Calculate positions using a modified Reingold-Tilford algorithm
-  const calculateSubtreeWidth = (node: TreeNode): number => {
+  const calculateSubtreeWidth = (node: LayoutTreeNode): number => {
     if (node.children.length === 0) {
       return nodeWidth
     }
@@ -191,7 +204,7 @@ export function calculateTreeLayout(root: TreeNode, nodeWidth = 200, nodeHeight 
     return Math.max(nodeWidth, totalWidth)
   }
   
-  const positionNode = (node: TreeNode, x: number, y: number) => {
+  const positionNode = (node: LayoutTreeNode, x: number, y: number) => {
     node.x = x
     node.y = y
     nodes.push(node)
@@ -223,10 +236,10 @@ export function calculateTreeLayout(root: TreeNode, nodeWidth = 200, nodeHeight 
   }
 }
 
-export function findNodePath(root: TreeNode, targetId: string): string[] {
+export function findNodePath(root: LayoutTreeNode, targetId: string): string[] {
   const path: string[] = []
   
-  const traverse = (node: TreeNode): boolean => {
+  const traverse = (node: LayoutTreeNode): boolean => {
     if (node.id === targetId) {
       if (node.id !== 'root') {
         path.unshift(node.id)

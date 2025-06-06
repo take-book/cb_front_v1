@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildChatTree, calculateTreeLayout, findNodePath } from '../chatTree'
-import type { HistoryMessage } from '@/types/api'
+import { getBranchConversationThread } from '../treeHelpers'
+import type { HistoryMessage, TreeNode } from '@/types/api'
 
 describe('chatTree', () => {
   describe('buildChatTree', () => {
@@ -137,6 +138,66 @@ describe('chatTree', () => {
         expect(node.x).toBeDefined()
         expect(node.y).toBeDefined()
       })
+    })
+  })
+
+  describe('getBranchConversationThread', () => {
+    it('should extract conversation thread for selected node', () => {
+      const tree: TreeNode = {
+        uuid: 'root',
+        role: 'system', 
+        content: 'Start',
+        children: [
+          {
+            uuid: 'msg-1',
+            role: 'user',
+            content: 'Hello',
+            children: [
+              {
+                uuid: 'msg-2',
+                role: 'assistant',
+                content: 'Hi there',
+                children: []
+              }
+            ]
+          }
+        ]
+      }
+
+      const messages = [
+        { message_uuid: 'msg-1', role: 'user', content: 'Hello' },
+        { message_uuid: 'msg-2', role: 'assistant', content: 'Hi there' },
+        { message_uuid: 'msg-3', role: 'user', content: 'Other branch' }
+      ]
+
+      const thread = getBranchConversationThread(tree, messages, 'msg-2')
+      
+      expect(thread).toHaveLength(2)
+      expect(thread[0].message_uuid).toBe('msg-1')
+      expect(thread[1].message_uuid).toBe('msg-2')
+    })
+
+    it('should return empty array for null tree', () => {
+      const messages = [
+        { message_uuid: 'msg-1', role: 'user', content: 'Hello' }
+      ]
+
+      const thread = getBranchConversationThread(null, messages, 'msg-1')
+      
+      expect(thread).toHaveLength(0)
+    })
+
+    it('should return empty array for empty messages', () => {
+      const tree: TreeNode = {
+        uuid: 'root',
+        role: 'system',
+        content: 'Start',
+        children: []
+      }
+
+      const thread = getBranchConversationThread(tree, [], null)
+      
+      expect(thread).toHaveLength(0)
     })
   })
 })

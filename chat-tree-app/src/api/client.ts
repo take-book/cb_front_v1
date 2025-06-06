@@ -2,6 +2,13 @@ import axios, { type AxiosInstance } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
+// Callback for handling auth failures (to be set by the app)
+let onAuthFailure: (() => void) | null = null
+
+export const setAuthFailureCallback = (callback: () => void) => {
+  onAuthFailure = callback
+}
+
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -54,16 +61,24 @@ apiClient.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
           return apiClient(originalRequest)
         } catch (refreshError) {
-          // Refresh failed, clear storage and redirect
+          // Refresh failed, clear storage and notify app
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
-          window.location.href = '/login'
+          if (onAuthFailure) {
+            onAuthFailure()
+          } else {
+            window.location.href = '/login'
+          }
           return Promise.reject(refreshError)
         }
       } else {
-        // No refresh token, redirect to login
+        // No refresh token, notify app
         localStorage.removeItem('access_token')
-        window.location.href = '/login'
+        if (onAuthFailure) {
+          onAuthFailure()
+        } else {
+          window.location.href = '/login'
+        }
       }
     }
 
@@ -80,7 +95,9 @@ export const healthCheck = async (): Promise<boolean> => {
     })
     return response.status === 200
   } catch (error) {
-    console.error('Health check failed:', error)
+    if (import.meta.env.DEV) {
+      console.error('Health check failed:', error)
+    }
     return false
   }
 }
@@ -88,8 +105,10 @@ export const healthCheck = async (): Promise<boolean> => {
 // Also set up the default axios instance for auth module
 axios.defaults.baseURL = API_BASE_URL
 
-// Log API base URL for debugging
-console.log('API Base URL:', API_BASE_URL)
+// Log API base URL for debugging in development only
+if (import.meta.env.DEV) {
+  console.log('API Base URL:', API_BASE_URL)
+}
 
 // Auth API
 export const authApi = {

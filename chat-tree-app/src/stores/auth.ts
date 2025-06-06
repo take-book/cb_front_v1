@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import apiClient from '@/api/client'
+import { authApi } from '@/api/client'
 import type { LoginResponse, UserInfo, UserRegisterResponse } from '../types/api'
 import { handleApiError } from '@/utils/errorHandler'
 
@@ -18,21 +18,10 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username: string, password: string) {
       try {
-        const formData = new URLSearchParams()
-        formData.append('username', username)
-        formData.append('password', password)
-        formData.append('grant_type', 'password')
+        const response = await authApi.login(username, password)
 
-        const response = await axios.post<LoginResponse>('/api/v1/auth/login', formData, {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json'
-          },
-          withCredentials: false
-        })
-
-        this.accessToken = response.data.access_token
-        this.refreshToken = response.data.refresh_token || null
+        this.accessToken = response.access_token
+        this.refreshToken = response.refresh_token || null
         
         // Store tokens in localStorage
         if (this.accessToken) {
@@ -41,9 +30,6 @@ export const useAuthStore = defineStore('auth', {
         if (this.refreshToken) {
           localStorage.setItem('refresh_token', this.refreshToken)
         }
-
-        // Set axios default header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${this.accessToken}`
 
         // Fetch user info
         await this.fetchUserInfo()
@@ -56,13 +42,8 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchUserInfo() {
       try {
-        const response = await axios.get<UserInfo>('/api/v1/auth/me', {
-          headers: {
-            'Accept': 'application/json'
-          },
-          withCredentials: false
-        })
-        this.user = response.data
+        const response = await authApi.me()
+        this.user = response
       } catch (error) {
         this.logout()
         const apiError = handleApiError(error)
@@ -77,8 +58,6 @@ export const useAuthStore = defineStore('auth', {
       
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
-      
-      delete axios.defaults.headers.common['Authorization']
     },
 
     async refreshAccessToken() {
@@ -88,20 +67,12 @@ export const useAuthStore = defineStore('auth', {
       }
 
       try {
-        const response = await axios.post<LoginResponse>('/api/v1/auth/refresh', null, {
-          headers: {
-            'Authorization': `Bearer ${this.refreshToken}`,
-            'Accept': 'application/json'
-          },
-          withCredentials: false
-        })
+        const response = await authApi.refresh()
 
-        this.accessToken = response.data.access_token
+        this.accessToken = response.access_token
         if (this.accessToken) {
           localStorage.setItem('access_token', this.accessToken)
         }
-        
-        axios.defaults.headers.common['Authorization'] = `Bearer ${this.accessToken}`
       } catch (error) {
         this.logout()
       }
