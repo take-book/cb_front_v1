@@ -26,9 +26,9 @@
     </header>
 
     <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex overflow-hidden" ref="mainContent">
       <!-- Tree View -->
-      <div class="flex-1 p-4">
+      <div class="p-4" :style="{ width: `${leftPanelWidth}px` }">
         <!-- Loading State -->
         <div v-if="chatsStore.isLoading" class="flex items-center justify-center h-full" data-test="loading">
           <div class="text-center">
@@ -69,8 +69,16 @@
         />
       </div>
 
+      <!-- Resizable Divider -->
+      <div 
+        class="w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize transition-colors relative"
+        @mousedown="startResize"
+      >
+        <div class="absolute inset-y-0 -left-1 -right-1 z-10"></div>
+      </div>
+
       <!-- Message Input Sidebar -->
-      <div class="w-96 bg-white border-l border-gray-200 flex flex-col">
+      <div class="bg-white border-l border-gray-200 flex flex-col" :style="{ width: `${rightPanelWidth}px` }">
         <!-- Selected Message Display -->
         <div v-if="selectedMessage" class="p-4 border-b border-gray-200" 
              :class="chatsStore.isBranchingMode ? 'bg-orange-50 border-orange-200' : 'bg-gray-50'" 
@@ -96,8 +104,8 @@
               Clear
             </button>
           </div>
-          <div class="text-sm text-gray-900 bg-white/50 rounded p-2 border">
-            {{ truncateContent(selectedMessage.content) }}
+          <div class="text-sm text-gray-900 bg-white/50 rounded p-2 border markdown-display">
+            <MarkdownContent :content="selectedMessage.content" />
           </div>
           <div v-if="chatsStore.isBranchingMode" 
                class="text-xs text-orange-600 mt-2 bg-orange-100/50 rounded p-2">
@@ -172,6 +180,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatsStore } from '../stores/chats'
 import ChatTreeView from '../components/ChatTreeView.vue'
+import MarkdownContent from '../components/MarkdownContent.vue'
 import type { HistoryMessage, TreeNode } from '../types/api'
 
 const route = useRoute()
@@ -179,6 +188,12 @@ const router = useRouter()
 const chatsStore = useChatsStore()
 
 const newMessage = ref('')
+const mainContent = ref<HTMLElement>()
+
+// Resizable panels state
+const leftPanelWidth = ref(window.innerWidth - 500) // Default: window width - 500px for right panel
+const rightPanelWidth = ref(400) // Default right panel width
+const isResizing = ref(false)
 
 // Load chat when route changes
 const chatUuid = computed(() => route.params.chatUuid as string)
@@ -256,4 +271,97 @@ const truncateContent = (content: string): string => {
   if (content.length <= maxLength) return content
   return content.substring(0, maxLength) + '...'
 }
+
+// Resizable divider functions
+const startResize = (e: MouseEvent) => {
+  isResizing.value = true
+  const startX = e.clientX
+  const startLeftWidth = leftPanelWidth.value
+  const startRightWidth = rightPanelWidth.value
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing.value || !mainContent.value) return
+    
+    const deltaX = e.clientX - startX
+    const containerWidth = mainContent.value.offsetWidth
+    
+    // Calculate new widths with constraints
+    const newLeftWidth = Math.max(300, Math.min(containerWidth - 350, startLeftWidth + deltaX))
+    const newRightWidth = containerWidth - newLeftWidth - 5 // 5px for divider
+    
+    leftPanelWidth.value = newLeftWidth
+    rightPanelWidth.value = Math.max(350, newRightWidth)
+  }
+
+  const handleMouseUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', handleMouseUp)
+    
+    // Save panel sizes to localStorage
+    localStorage.setItem('chatview-left-panel-width', leftPanelWidth.value.toString())
+    localStorage.setItem('chatview-right-panel-width', rightPanelWidth.value.toString())
+  }
+
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', handleMouseUp)
+}
+
+// Restore panel sizes from localStorage
+onMounted(() => {
+  const savedLeftWidth = localStorage.getItem('chatview-left-panel-width')
+  const savedRightWidth = localStorage.getItem('chatview-right-panel-width')
+  
+  if (savedLeftWidth) leftPanelWidth.value = parseInt(savedLeftWidth)
+  if (savedRightWidth) rightPanelWidth.value = parseInt(savedRightWidth)
+  
+  // Handle window resize
+  window.addEventListener('resize', handleWindowResize)
+})
+
+const handleWindowResize = () => {
+  // Adjust panel widths to fit new window size
+  const totalWidth = window.innerWidth
+  const minLeftWidth = 300
+  const minRightWidth = 350
+  
+  if (leftPanelWidth.value + rightPanelWidth.value + 5 > totalWidth) {
+    const availableWidth = totalWidth - 5
+    const ratio = leftPanelWidth.value / (leftPanelWidth.value + rightPanelWidth.value)
+    
+    leftPanelWidth.value = Math.max(minLeftWidth, Math.floor(availableWidth * ratio))
+    rightPanelWidth.value = Math.max(minRightWidth, availableWidth - leftPanelWidth.value)
+  }
+}
 </script>
+
+<style scoped>
+/* Prevent text selection during resize */
+.resizing {
+  user-select: none;
+}
+
+/* Markdown display styles */
+.markdown-display :deep(.markdown-content) {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.markdown-display :deep(.markdown-content)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-display :deep(.markdown-content)::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.markdown-display :deep(.markdown-content)::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.markdown-display :deep(.markdown-content)::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+</style>

@@ -1,9 +1,10 @@
 <template>
   <div class="chat-tree-container" ref="containerRef">
     <svg
-      :width="treeLayout.width + 100"
-      :height="treeLayout.height + 100"
+      :width="treeLayout.width + 200"
+      :height="treeLayout.height + 200"
       class="chat-tree-svg"
+      :viewBox="`-50 -50 ${treeLayout.width + 200} ${treeLayout.height + 200}`"
     >
       <!-- Connections -->
       <g class="connections">
@@ -68,8 +69,8 @@
                   </span>
                 </div>
               </div>
-              <div class="text-sm text-gray-700 line-clamp-3 flex-1">
-                {{ truncateContent(node.content) }}
+              <div class="text-sm text-gray-700 line-clamp-3 flex-1 markdown-preview">
+                <MarkdownContent :content="truncateContent(node.content)" />
               </div>
             </div>
           </foreignObject>
@@ -82,6 +83,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { TreeNode } from '../types/api'
+import MarkdownContent from './MarkdownContent.vue'
 
 interface RenderNode extends TreeNode {
   x: number
@@ -116,30 +118,21 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement>()
 const nodeWidth = 180
 const nodeHeight = 80
-const horizontalSpacing = 220
-const verticalSpacing = 100
+const horizontalSpacing = 240
+const verticalSpacing = 120
 
 // Convert tree structure to render nodes with positions
 const renderNodes = computed((): RenderNode[] => {
   if (!props.treeStructure) return []
 
   const nodes: RenderNode[] = []
-  const levelCounts: number[] = []
-
-  const convertNode = (node: TreeNode, level: number, parentX?: number): RenderNode => {
-    // Track how many nodes are at this level
-    if (levelCounts[level] === undefined) {
-      levelCounts[level] = 0
-    }
-    
-    const nodeIndex = levelCounts[level]
-    levelCounts[level]++
-
-    const x = parentX !== undefined 
-      ? parentX + (nodeIndex - (node.children.length - 1) / 2) * horizontalSpacing
-      : level * horizontalSpacing
-
-    const y = level * verticalSpacing
+  
+  // Better tree layout algorithm that prevents overlap
+  const layoutTree = (node: TreeNode, level: number = 0, parentX: number = 0, siblingIndex: number = 0, siblingCount: number = 1): RenderNode => {
+    // Calculate horizontal position based on parent and sibling positioning
+    const xOffset = (siblingIndex - (siblingCount - 1) / 2) * horizontalSpacing
+    const x = level === 0 ? 150 : parentX + xOffset
+    const y = 50 + level * verticalSpacing
 
     const renderNode: RenderNode = {
       ...node,
@@ -150,17 +143,52 @@ const renderNodes = computed((): RenderNode[] => {
 
     nodes.push(renderNode)
 
-    // Process children
-    node.children.forEach(child => {
-      convertNode(child, level + 1, x)
-    })
+    // Process children with proper spacing
+    if (node.children.length > 0) {
+      node.children.forEach((child, index) => {
+        layoutTree(child, level + 1, x, index, node.children.length)
+      })
+    }
 
     return renderNode
   }
 
-  convertNode(props.treeStructure, 0)
+  layoutTree(props.treeStructure)
+  
+  // Adjust positions to prevent overlap
+  adjustNodePositions(nodes)
+  
   return nodes
 })
+
+// Adjust node positions to prevent overlap
+function adjustNodePositions(nodes: RenderNode[]) {
+  // Group nodes by level
+  const levels: { [key: number]: RenderNode[] } = {}
+  nodes.forEach(node => {
+    if (!levels[node.level]) levels[node.level] = []
+    levels[node.level].push(node)
+  })
+
+  // Sort nodes at each level by x position and adjust if they overlap
+  Object.values(levels).forEach(levelNodes => {
+    levelNodes.sort((a, b) => a.x - b.x)
+    
+    for (let i = 1; i < levelNodes.length; i++) {
+      const prevNode = levelNodes[i - 1]
+      const currNode = levelNodes[i]
+      const minDistance = nodeWidth + 20 // Add some padding
+      
+      if (currNode.x - prevNode.x < minDistance) {
+        const shift = minDistance - (currNode.x - prevNode.x)
+        // Shift current node and all subsequent nodes
+        for (let j = i; j < levelNodes.length; j++) {
+          levelNodes[j].x += shift
+        }
+      }
+    }
+  })
+}
 
 // Calculate tree layout dimensions
 const treeLayout = computed((): TreeLayout => {
@@ -286,10 +314,34 @@ const canBranchFrom = (nodeUuid: string): boolean => {
   height: 100%;
   overflow: auto;
   background-color: #f9fafb;
+  position: relative;
+  padding: 20px;
 }
 
 .chat-tree-svg {
   display: block;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* Custom scrollbar styling */
+.chat-tree-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.chat-tree-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.chat-tree-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.chat-tree-container::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
 
 .tree-connection {
@@ -383,5 +435,18 @@ const canBranchFrom = (nodeUuid: string): boolean => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.markdown-preview :deep(.markdown-content) {
+  font-size: 0.875rem;
+}
+
+.markdown-preview :deep(.markdown-content p) {
+  margin: 0;
+}
+
+.markdown-preview :deep(.markdown-content code) {
+  font-size: 0.8em;
+  padding: 0.1em 0.2em;
 }
 </style>
