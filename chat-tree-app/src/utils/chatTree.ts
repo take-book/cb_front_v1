@@ -12,7 +12,7 @@ export interface LayoutTreeNode extends ApiTreeNode {
 }
 
 // Re-export the API TreeNode for clarity
-export type { ApiTreeNode as TreeNode } from '@/types/api'
+export type { TreeNode } from '@/types/api'
 
 export interface TreeLayout {
   nodes: LayoutTreeNode[]

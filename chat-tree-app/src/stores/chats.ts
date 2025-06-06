@@ -88,7 +88,7 @@ export const useChatsStore = defineStore('chats', () => {
     }
   }
 
-  async function sendMessage(content: string): Promise<MessageResponse | null> {
+  async function sendMessage(content: string, modelId?: string | null): Promise<MessageResponse | null> {
     if (!currentChatUuid.value) {
       error.value = 'No chat selected'
       return null
@@ -109,7 +109,8 @@ export const useChatsStore = defineStore('chats', () => {
       const response = await chatApi.sendMessage(
         currentChatUuid.value, 
         content, 
-        parentMessageUuid
+        parentMessageUuid,
+        modelId
       )
       
       // Success message for branching only in development
@@ -132,12 +133,12 @@ export const useChatsStore = defineStore('chats', () => {
     }
   }
 
-  async function createNewChat(initialMessage?: string): Promise<string | null> {
+  async function createNewChat(initialMessage?: string, modelId?: string): Promise<string | null> {
     isLoading.value = true
     error.value = null
 
     try {
-      const response = await chatApi.createChat(initialMessage)
+      const response = await chatApi.createChat(initialMessage, modelId)
       
       // Load the new chat
       await loadCompleteChat(response.chat_uuid)

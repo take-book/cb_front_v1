@@ -16,9 +16,7 @@ const props = defineProps<Props>()
 // Configure marked options
 marked.setOptions({
   breaks: true,
-  gfm: true,
-  headerIds: false,
-  mangle: false
+  gfm: true
 })
 
 // Compute sanitized HTML from markdown

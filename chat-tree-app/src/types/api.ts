@@ -24,6 +24,7 @@ export interface UserRegisterResponse {
 // Chat Types
 export interface ChatCreateRequest {
   initial_message?: string | null
+  model_id?: string | null
 }
 
 export interface ChatCreateResponse {
@@ -48,6 +49,7 @@ export interface UpdateChatRequest {
 export interface MessageRequest {
   content: string
   parent_message_uuid?: string | null
+  model_id?: string | null
 }
 
 export interface MessageResponse {
@@ -182,4 +184,39 @@ export function isHistoryMessage(obj: any): obj is HistoryMessage {
     'role' in obj &&
     'content' in obj
   )
+}
+
+// Model Types
+export interface ModelArchitecture {
+  input_modalities: string[]
+  output_modalities: string[]
+  tokenizer: string
+}
+
+export interface ModelPricing {
+  prompt: string
+  completion: string
+}
+
+export interface ModelDto {
+  id: string
+  name: string
+  created: number
+  description?: string
+  architecture?: ModelArchitecture
+  pricing?: ModelPricing
+  context_length?: number
+}
+
+export interface ModelListResponse {
+  data: ModelDto[]
+}
+
+export interface ModelSelectionRequest {
+  model_id: string
+}
+
+export interface CurrentModelResponse {
+  model_id: string
+  name: string
 }

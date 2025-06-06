@@ -21,22 +21,34 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Actions Bar -->
-      <div class="mb-6 flex flex-col sm:flex-row gap-4">
-        <button
-          @click="handleNewChat"
-          :disabled="chatsStore.isLoading"
-          class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
-        >
-          New Chat
-        </button>
+      <div class="mb-6 flex flex-col gap-4">
+        <!-- Model Selector -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border">
+          <ModelSelector 
+            v-model="selectedModelId"
+            @model-selected="handleModelSelected"
+            :show-details="true"
+            :auto-select="true"
+          />
+        </div>
         
-        <input
-          v-model="searchQuery"
-          @input="handleSearch"
-          type="search"
-          placeholder="Search chats..."
-          class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
+        <div class="flex flex-col sm:flex-row gap-4">
+          <button
+            @click="handleNewChat"
+            :disabled="chatsStore.isLoading"
+            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
+          >
+            New Chat
+          </button>
+          
+          <input
+            v-model="searchQuery"
+            @input="handleSearch"
+            type="search"
+            placeholder="Search chats..."
+            class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -136,12 +148,15 @@ import { useRouter } from 'vue-router'
 import { useChatsStore } from '../stores/chats'
 import { useAuthStore } from '../stores/auth'
 import { healthCheck } from '../api/client'
+import ModelSelector from '../components/ModelSelector.vue'
+import type { ModelDto } from '../types/api'
 
 const router = useRouter()
 const chatsStore = useChatsStore()
 const authStore = useAuthStore()
 
 const searchQuery = ref('')
+const selectedModelId = ref<string | null>(null)
 let searchTimeout: number | undefined
 
 onMounted(async () => {
@@ -153,12 +168,18 @@ onMounted(async () => {
   }
 })
 
+const handleModelSelected = (model: ModelDto | null) => {
+  if (model) {
+    selectedModelId.value = model.id
+  }
+}
+
 const handleNewChat = async () => {
   try {
     console.log('Creating new chat...')
     console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
     
-    const chatUuid = await chatsStore.createNewChat()
+    const chatUuid = await chatsStore.createNewChat(undefined, selectedModelId.value || undefined)
     if (chatUuid) {
       console.log('Chat created successfully:', chatUuid)
       console.log('Navigating to:', `/chats/${chatUuid}`)

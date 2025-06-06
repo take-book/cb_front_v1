@@ -14,14 +14,20 @@ import type {
   ChatListParams,
   RecentChatsParams,
   SelectRequest,
-  PathResponse
+  PathResponse,
+  ModelListResponse,
+  ModelSelectionRequest,
+  CurrentModelResponse
 } from '../types/api'
 
 // Chat API client with new endpoints
 export const chatApi = {
   // Create a new chat
-  async createChat(initialMessage?: string): Promise<ChatCreateResponse> {
-    const request: ChatCreateRequest = initialMessage ? { initial_message: initialMessage } : {}
+  async createChat(initialMessage?: string, modelId?: string): Promise<ChatCreateResponse> {
+    const request: ChatCreateRequest = {
+      initial_message: initialMessage || null,
+      model_id: modelId || null
+    }
     const response = await apiClient.post('/api/v1/chats/', request)
     return response.data
   },
@@ -33,10 +39,11 @@ export const chatApi = {
   },
 
   // Send a message with optional parent_message_uuid for branching
-  async sendMessage(chatUuid: string, content: string, parentMessageUuid?: string | null): Promise<MessageResponse> {
+  async sendMessage(chatUuid: string, content: string, parentMessageUuid?: string | null, modelId?: string | null): Promise<MessageResponse> {
     const request: MessageRequest = { 
       content,
-      parent_message_uuid: parentMessageUuid 
+      parent_message_uuid: parentMessageUuid,
+      model_id: modelId
     }
     
     const response = await apiClient.post(`/api/v1/chats/${chatUuid}/messages`, request)
@@ -109,6 +116,28 @@ export const chatApi = {
   },
 
   // Note: Old API endpoints removed as they don't exist in current backend
+}
+
+// Models API client
+export const modelsApi = {
+  // Get available models
+  async getModels(category?: string): Promise<ModelListResponse> {
+    const params = category ? { category } : {}
+    const response = await apiClient.get('/api/v1/models/', { params })
+    return response.data
+  },
+
+  // Select model
+  async selectModel(modelId: string): Promise<void> {
+    const request: ModelSelectionRequest = { model_id: modelId }
+    await apiClient.post('/api/v1/models/select', request)
+  },
+
+  // Get current model
+  async getCurrentModel(): Promise<CurrentModelResponse> {
+    const response = await apiClient.get('/api/v1/models/current')
+    return response.data
+  }
 }
 
 // Export auth client separately  

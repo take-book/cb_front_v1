@@ -123,6 +123,16 @@
 
         <!-- Compact Message Input (Bottom) -->
         <div class="flex-shrink-0 p-4 bg-gray-50 border-t border-gray-200">
+          <!-- Model Selector -->
+          <div class="mb-3">
+            <ModelSelector 
+              v-model="selectedModelId"
+              @model-selected="handleModelSelected"
+              :show-details="false"
+              :auto-select="true"
+            />
+          </div>
+          
           <form @submit.prevent="handleSendMessage" data-test="message-form">
             <div class="flex space-x-2">
               <div class="flex-1">
@@ -191,8 +201,9 @@ import { useChatsStore } from '../stores/chats'
 import ChatTreeView from '../components/ChatTreeView.vue'
 import MessageStream from '../components/MessageStream.vue'
 import MarkdownContent from '../components/MarkdownContent.vue'
+import ModelSelector from '../components/ModelSelector.vue'
 import { getBranchConversationThread } from '../utils/treeHelpers'
-import type { HistoryMessage, TreeNode } from '../types/api'
+import type { HistoryMessage, TreeNode, ModelDto } from '../types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -200,6 +211,7 @@ const chatsStore = useChatsStore()
 
 const newMessage = ref('')
 const mainContent = ref<HTMLElement>()
+const selectedModelId = ref<string | null>(null)
 
 // Resizable panels state  
 const leftPanelWidth = ref(Math.max(300, window.innerWidth - 600)) // Default: window width - 600px for right panel
@@ -248,6 +260,12 @@ const handleMessageSelect = (messageUuid: string) => {
   chatsStore.selectNode(messageUuid)
 }
 
+const handleModelSelected = (model: ModelDto | null) => {
+  if (model) {
+    selectedModelId.value = model.id
+  }
+}
+
 const handleSendMessage = async () => {
   if (!newMessage.value.trim() || !chatUuid.value) {
     console.log('Cannot send message - missing content or chatUuid:', {
@@ -265,7 +283,7 @@ const handleSendMessage = async () => {
   })
 
   try {
-    const response = await chatsStore.sendMessage(newMessage.value.trim())
+    const response = await chatsStore.sendMessage(newMessage.value.trim(), selectedModelId.value)
     console.log('Message sent successfully:', response)
     
     if (response) {
