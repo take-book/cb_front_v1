@@ -27,6 +27,9 @@ export const useChatsStore = defineStore('chats', () => {
   
   // System message visibility state
   const showSystemMessages = ref(true)
+  
+  // Branch selection preservation for streaming mode
+  const preservedSelectionUuid = ref<string | null>(null)
 
   // Computed getters
   const treeStructure = computed((): TreeNode | null => {
@@ -74,12 +77,17 @@ export const useChatsStore = defineStore('chats', () => {
       chatData.value = data
       currentChatUuid.value = chatUuid
       
-      // Reset selection and path, then auto-select latest
+      // Reset selection and path
       selectedNodeUuid.value = null
       currentPath.value = []
       
-      // Auto-select the latest assistant message for easy continuation
-      setTimeout(() => autoSelectLatestNode(), 100)
+      // Try to restore preserved selection first, otherwise auto-select latest
+      setTimeout(() => {
+        const wasRestored = restorePreservedSelection(true) // Prefer new branch (AI response)
+        if (!wasRestored) {
+          autoSelectLatestNode()
+        }
+      }, 100)
       
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load chat'
@@ -364,6 +372,66 @@ export const useChatsStore = defineStore('chats', () => {
     }
   }
 
+  // Branch selection preservation functions for streaming mode
+  function preserveSelectionForStreaming() {
+    // Only preserve selection if we're in branching mode
+    if (isBranchingMode.value && selectedNodeUuid.value) {
+      preservedSelectionUuid.value = selectedNodeUuid.value
+      console.log('Preserving selection for streaming:', selectedNodeUuid.value)
+    } else {
+      preservedSelectionUuid.value = null
+      console.log('Not preserving selection - not in branching mode')
+    }
+  }
+
+  function getPreservedSelection(): string | null {
+    return preservedSelectionUuid.value
+  }
+
+  function restorePreservedSelection(preferNewBranch: boolean = false): boolean {
+    if (!preservedSelectionUuid.value) {
+      console.log('No preserved selection to restore')
+      return false
+    }
+
+    // Check if the preserved node still exists in the tree
+    const preservedNode = findNodeInTree(preservedSelectionUuid.value)
+    if (!preservedNode) {
+      console.log('Preserved node no longer exists:', preservedSelectionUuid.value)
+      preservedSelectionUuid.value = null
+      return false
+    }
+
+    // If preferNewBranch is true, check if a new branch was created from the preserved node
+    if (preferNewBranch) {
+      const latestLeaf = findLatestLeafNode(treeStructure.value)
+      if (latestLeaf && latestLeaf.role === 'assistant') {
+        // Check if this is a newly created branch from the preserved node
+        const parentPath = getPathToNode(latestLeaf.uuid)
+        const preservedInPath = parentPath.some(node => node.uuid === preservedSelectionUuid.value)
+        
+        if (preservedInPath) {
+          // This is a new branch created from our preserved selection
+          // Select the new assistant response instead
+          console.log('Selecting newly created branch:', latestLeaf.uuid)
+          selectNode(latestLeaf.uuid)
+          preservedSelectionUuid.value = null
+          return true
+        }
+      }
+    }
+
+    // Restore to the original preserved selection
+    console.log('Restoring preserved selection:', preservedSelectionUuid.value)
+    selectNode(preservedSelectionUuid.value)
+    preservedSelectionUuid.value = null
+    return true
+  }
+
+  function clearPreservedSelection() {
+    preservedSelectionUuid.value = null
+  }
+
   // System message visibility functions
   function toggleSystemMessages() {
     showSystemMessages.value = !showSystemMessages.value
@@ -436,6 +504,12 @@ export const useChatsStore = defineStore('chats', () => {
     getNodeParent,
     findLatestLeafNode,
     autoSelectLatestNode,
+
+    // Branch selection preservation
+    preserveSelectionForStreaming,
+    getPreservedSelection,
+    restorePreservedSelection,
+    clearPreservedSelection,
 
     // System message visibility
     toggleSystemMessages,

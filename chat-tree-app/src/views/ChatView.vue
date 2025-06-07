@@ -237,6 +237,9 @@ const handleSendMessage = async () => {
 
   try {
     if (useStreaming.value) {
+      // Preserve selection before streaming (for branch mode restoration)
+      chatsStore.preserveSelectionForStreaming()
+      
       // Use SSE streaming
       await sendStreamingMessage(
         chatUuid.value,

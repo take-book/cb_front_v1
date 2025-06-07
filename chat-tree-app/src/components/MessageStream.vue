@@ -7,7 +7,7 @@
           Conversation Thread
         </h3>
         <div class="text-xs text-gray-500">
-          {{ messages.length }} messages
+          {{ mergedMessages.displayMessages.length + mergedMessages.streamingOnlyMessages.length }} messages
         </div>
       </div>
       <div v-if="isBranchingMode" class="mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
@@ -17,9 +17,9 @@
 
     <!-- Messages -->
     <div class="flex-1 overflow-y-auto px-4 py-2 space-y-3" ref="messagesContainer">
-      <!-- Display existing messages from store -->
+      <!-- Display existing messages from store (with deduplication) -->
       <div
-        v-for="(message, index) in messages"
+        v-for="(message, index) in mergedMessages.displayMessages"
         :key="message.message_uuid"
         :class="[
           'flex',
@@ -72,9 +72,9 @@
         </div>
       </div>
       
-      <!-- Display streaming messages (user and assistant) -->
-      <template v-if="streamingMessages && streamingMessages.size > 0">
-        <template v-for="[msgId, msg] in Array.from(streamingMessages.entries())" :key="`streaming-${msgId}`">
+      <!-- Display streaming messages (user and assistant, deduplicated) -->
+      <template v-if="mergedMessages.streamingOnlyMessages.length > 0">
+        <template v-for="msg in mergedMessages.streamingOnlyMessages" :key="`streaming-${msg.id}`">
           <!-- User streaming message -->
           <div
             v-if="msg.role === 'user'"
@@ -116,7 +116,7 @@
       </div>
       
       <!-- Empty state -->
-      <div v-if="messages.length === 0 && !streamingMessage && (!streamingMessages || streamingMessages.size === 0)" class="flex items-center justify-center h-full">
+      <div v-if="mergedMessages.displayMessages.length === 0 && !streamingMessage && mergedMessages.streamingOnlyMessages.length === 0" class="flex items-center justify-center h-full">
         <div class="text-center text-gray-500">
           <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -130,9 +130,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue'
+import { ref, nextTick, watch, computed } from 'vue'
 import MarkdownContent from './MarkdownContent.vue'
 import StreamingMessage from './StreamingMessage.vue'
+import { mergeMessagesWithoutDuplication } from '../utils/messageDeduplication'
 import type { HistoryMessage } from '../types/api'
 import type { StreamingMessage as StreamingMessageType } from '../composables/useStreamingMessage'
 
@@ -157,9 +158,21 @@ const emit = defineEmits<{
 
 const messagesContainer = ref<HTMLElement>()
 
+// Merge messages while avoiding duplication
+const mergedMessages = computed(() => {
+  if (!props.streamingMessages || props.streamingMessages.size === 0) {
+    return {
+      displayMessages: props.messages,
+      streamingOnlyMessages: []
+    }
+  }
+  
+  return mergeMessagesWithoutDuplication(props.messages, props.streamingMessages)
+})
+
 // Auto-scroll to bottom when new messages are added
 watch(
-  () => props.messages.length,
+  () => mergedMessages.value.displayMessages.length,
   async () => {
     await nextTick()
     if (messagesContainer.value) {
@@ -170,7 +183,7 @@ watch(
 
 // Auto-scroll when streaming messages change
 watch(
-  () => props.streamingMessages?.size || 0,
+  () => mergedMessages.value.streamingOnlyMessages.length,
   async () => {
     await nextTick()
     if (messagesContainer.value) {
