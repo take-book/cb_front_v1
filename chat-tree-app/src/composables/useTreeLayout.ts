@@ -82,6 +82,20 @@ export function useTreeLayout(
     // Adjust positions to prevent overlap
     adjustNodePositions(nodes)
     
+    // Debug: Log nodes in development
+    if (import.meta.env.DEV && nodes.length > 0) {
+      console.log('Tree layout generated', nodes.length, 'nodes')
+      nodes.slice(0, 3).forEach((node, index) => {
+        console.log(`Node ${index}:`, {
+          uuid: node.uuid.slice(-8),
+          role: node.role,
+          content: node.content.slice(0, 30),
+          contentLength: node.content.length,
+          position: { x: node.x, y: node.y }
+        })
+      })
+    }
+    
     return nodes
   })
 

@@ -1,25 +1,11 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-4">
-          <h1 class="text-2xl font-bold text-gray-900">Chats</h1>
-          <div class="flex items-center space-x-4">
-            <span class="text-gray-600">{{ authStore.user?.username }}</span>
-            <button
-              @click="handleLogout"
-              data-test="logout-button"
-              class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
+  <AppLayout>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Chats</h1>
+        <p class="text-gray-600 mt-1">Manage your conversations</p>
       </div>
-    </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Actions Bar -->
       <div class="mb-6 flex flex-col gap-4">
         <!-- Model Selector -->
@@ -138,8 +124,8 @@
           {{ page }}
         </button>
       </div>
-    </main>
-  </div>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -149,6 +135,7 @@ import { useChatsStore } from '../stores/chats'
 import { useAuthStore } from '../stores/auth'
 import { healthCheck } from '../api/client'
 import ModelSelector from '../components/ModelSelector.vue'
+import AppLayout from '../components/AppLayout.vue'
 import type { ModelDto } from '../types/api'
 
 const router = useRouter()

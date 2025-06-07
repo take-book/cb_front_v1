@@ -35,6 +35,24 @@ export const chatApi = {
   // Get complete chat data (new endpoint - replaces multiple old endpoints)
   async getCompleteChat(chatUuid: string): Promise<CompleteChatDataResponse> {
     const response = await apiClient.get(`/api/v1/chats/${chatUuid}/complete`)
+    
+    // Debug: Log raw API response
+    if (import.meta.env.DEV) {
+      console.log('Raw API response for getCompleteChat:', {
+        chatUuid,
+        status: response.status,
+        data: response.data,
+        treeStructure: response.data.tree_structure,
+        treeRoot: response.data.tree_structure ? {
+          uuid: response.data.tree_structure.uuid,
+          role: response.data.tree_structure.role,
+          content: response.data.tree_structure.content?.slice(0, 100),
+          contentLength: response.data.tree_structure.content?.length,
+          childrenCount: response.data.tree_structure.children?.length
+        } : null
+      })
+    }
+    
     return response.data
   },
 

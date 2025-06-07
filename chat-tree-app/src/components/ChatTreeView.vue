@@ -114,26 +114,21 @@ const filterCache = new Map<string, TreeNode | null>()
 // Recursive filter function for system nodes
 const filterSystemNodes = (node: TreeNode): TreeNode | null => {
   if (node.role === 'system') {
-    // If this is a system node, check if it has non-system children
+    // If this is a system node, process its children and return them
     const filteredChildren = node.children
       .map(child => filterSystemNodes(child))
       .filter(child => child !== null) as TreeNode[]
     
-    // If system node has non-system children, return a modified version
-    // Otherwise, return the first non-system child or null
-    if (filteredChildren.length > 0) {
-      // If there are multiple children, we need to preserve the structure
-      // but hide the system node itself
-      if (filteredChildren.length === 1) {
-        return filteredChildren[0]
-      } else {
-        // Multiple children - create a virtual root
-        return {
-          uuid: `virtual-${node.uuid}`,
-          role: 'user', // Use user role as default for virtual nodes
-          content: '',
-          children: filteredChildren
-        }
+    // Return the first child if there's only one, or null if no children
+    // This effectively removes the system node from the tree while preserving its children
+    if (filteredChildren.length === 1) {
+      return filteredChildren[0]
+    } else if (filteredChildren.length > 1) {
+      // Multiple children case: we can't easily merge them without creating confusion
+      // So we'll keep the system node but mark it differently for display
+      return {
+        ...node,
+        children: filteredChildren
       }
     }
     return null
@@ -152,28 +147,48 @@ const filterSystemNodes = (node: TreeNode): TreeNode | null => {
 
 // Filter tree structure to hide system messages when needed with proper memoization
 const filteredTreeStructure = computed(() => {
-  // Create cache key based on structure and visibility settings
-  const cacheKey = `${props.showSystemMessages}-${props.treeStructure?.uuid || 'null'}-${JSON.stringify(props.treeStructure?.children?.map(c => c.uuid) || [])}`
-  
-  if (props.showSystemMessages || !props.treeStructure) {
-    return props.treeStructure
+  // Debug: Log the props treeStructure
+  if (import.meta.env.DEV && props.treeStructure) {
+    console.log('ChatTreeView received treeStructure:', {
+      uuid: props.treeStructure.uuid,
+      role: props.treeStructure.role,
+      content: props.treeStructure.content.slice(0, 50) + '...',
+      contentLength: props.treeStructure.content.length,
+      childrenCount: props.treeStructure.children?.length || 0,
+      children: props.treeStructure.children?.map(child => ({
+        uuid: child.uuid,
+        role: child.role,
+        content: child.content.slice(0, 30) + '...'
+      })) || []
+    })
   }
   
-  // Check cache first
-  if (filterCache.has(cacheKey)) {
-    return filterCache.get(cacheKey)
-  }
+  // Always return the original tree structure for now to debug the issue
+  // We'll temporarily disable system message filtering to isolate the problem
+  return props.treeStructure
   
-  // Compute filtered structure
-  const filtered = filterSystemNodes(props.treeStructure)
+  // TODO: Re-enable system message filtering after fixing the core issue
+  // const cacheKey = `${props.showSystemMessages}-${props.treeStructure?.uuid || 'null'}-${JSON.stringify(props.treeStructure?.children?.map(c => c.uuid) || [])}`
   
-  // Cache result (with size limit to prevent memory leaks)
-  if (filterCache.size > 100) {
-    filterCache.clear() // Simple cache eviction
-  }
-  filterCache.set(cacheKey, filtered)
+  // if (props.showSystemMessages || !props.treeStructure) {
+  //   return props.treeStructure
+  // }
   
-  return filtered
+  // // Check cache first
+  // if (filterCache.has(cacheKey)) {
+  //   return filterCache.get(cacheKey)
+  // }
+  
+  // // Compute filtered structure
+  // const filtered = filterSystemNodes(props.treeStructure)
+  
+  // // Cache result (with size limit to prevent memory leaks)
+  // if (filterCache.size > 100) {
+  //   filterCache.clear() // Simple cache eviction
+  // }
+  // filterCache.set(cacheKey, filtered)
+  
+  // return filtered
 })
 
 // Use the tree layout composable with filtered structure
@@ -181,6 +196,8 @@ const { renderNodes, treeLayout, connections, nodeWidth, nodeHeight } = useTreeL
   computed(() => filteredTreeStructure.value || null),
   computed(() => props.currentPath)
 )
+
+// Debug: Log renderNodes when they change (moved to composable)
 
 // Event handlers
 const handleNodeClick = (nodeId: string) => {

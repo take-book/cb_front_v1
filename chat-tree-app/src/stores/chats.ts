@@ -77,6 +77,42 @@ export const useChatsStore = defineStore('chats', () => {
       chatData.value = data
       currentChatUuid.value = chatUuid
       
+      // Debug: Log the loaded data
+      if (import.meta.env.DEV) {
+        console.log('Loaded chat data:', {
+          chatUuid,
+          title: data.title,
+          messageCount: data.messages?.length || 0,
+          treeStructure: data.tree_structure,
+          treeStructureType: typeof data.tree_structure,
+          hasTreeContent: !!data.tree_structure?.content,
+          treeRole: data.tree_structure?.role,
+          treeChildren: data.tree_structure?.children?.length || 0
+        })
+        
+        // Log first few messages
+        if (data.messages && data.messages.length > 0) {
+          console.log('First 3 messages:', data.messages.slice(0, 3).map(msg => ({
+            uuid: msg.message_uuid,
+            role: msg.role,
+            content: msg.content.slice(0, 50) + '...'
+          })))
+        }
+        
+        // Log tree structure details
+        if (data.tree_structure) {
+          console.log('Tree structure details:', {
+            root: {
+              uuid: data.tree_structure.uuid,
+              role: data.tree_structure.role,
+              content: data.tree_structure.content.slice(0, 50),
+              contentLength: data.tree_structure.content.length,
+              childrenCount: data.tree_structure.children?.length || 0
+            }
+          })
+        }
+      }
+      
       // Reset selection and path
       selectedNodeUuid.value = null
       currentPath.value = []
@@ -403,7 +439,7 @@ export const useChatsStore = defineStore('chats', () => {
     }
 
     // If preferNewBranch is true, check if a new branch was created from the preserved node
-    if (preferNewBranch) {
+    if (preferNewBranch && treeStructure.value) {
       const latestLeaf = findLatestLeafNode(treeStructure.value)
       if (latestLeaf && latestLeaf.role === 'assistant') {
         // Check if this is a newly created branch from the preserved node

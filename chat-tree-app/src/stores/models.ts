@@ -172,6 +172,10 @@ export const useModelsStore = defineStore('models', () => {
     setSelectedModelId,
     clearSelection,
     reset,
-    initialize
+    initialize,
+
+    // Aliases for compatibility
+    models: availableModels,
+    fetchModels: fetchAvailableModels
   }
 })

@@ -48,6 +48,10 @@ export function useToast() {
     return addToast({ type: 'info', title, message, duration })
   }
 
+  const showToast = (title: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', message?: string, duration?: number) => {
+    return addToast({ type, title, message, duration })
+  }
+
   return {
     toasts,
     addToast,
@@ -55,6 +59,7 @@ export function useToast() {
     success,
     error,
     warning,
-    info
+    info,
+    showToast
   }
 }

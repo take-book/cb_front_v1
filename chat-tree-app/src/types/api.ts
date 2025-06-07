@@ -220,3 +220,132 @@ export interface CurrentModelResponse {
   model_id: string
   name: string
 }
+
+// Template Types
+export interface TemplateCreateRequest {
+  name: string
+  description?: string | null
+  template_content: string
+  category?: string | null
+  variables?: string[] | null
+  is_public?: boolean
+}
+
+export interface TemplateUpdateRequest {
+  name?: string | null
+  description?: string | null
+  template_content?: string | null
+  category?: string | null
+  variables?: string[] | null
+  is_public?: boolean | null
+  is_favorite?: boolean | null
+}
+
+export interface TemplateResponse {
+  uuid: string
+  name: string
+  description: string | null
+  template_content: string
+  category: string | null
+  variables: string[] | null
+  is_public: boolean
+  is_favorite: boolean
+  usage_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TemplateListParams {
+  page?: number
+  limit?: number
+  category?: string | null
+  is_favorite?: boolean | null
+  q?: string | null
+}
+
+// Preset Types
+export interface PresetCreateRequest {
+  name: string
+  description?: string | null
+  model_id: string
+  temperature?: number
+  max_tokens?: number
+  system_prompt?: string | null
+}
+
+export interface PresetUpdateRequest {
+  name?: string | null
+  description?: string | null
+  model_id?: string | null
+  temperature?: number | null
+  max_tokens?: number | null
+  system_prompt?: string | null
+  is_favorite?: boolean | null
+}
+
+export interface PresetResponse {
+  uuid: string
+  name: string
+  description: string | null
+  model_id: string
+  temperature: number
+  max_tokens: number
+  system_prompt: string | null
+  is_favorite: boolean
+  usage_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PresetListParams {
+  page?: number
+  limit?: number
+  is_favorite?: boolean | null
+  q?: string | null
+}
+
+// Analytics Types
+export interface UsageStatsResponse {
+  total_messages: number
+  total_tokens: number
+  total_cost: number
+  period_start: string
+  period_end: string
+}
+
+export interface ModelUsageStats {
+  model_id: string
+  model_name: string
+  message_count: number
+  token_count: number
+  cost: number
+  percentage: number
+}
+
+export interface DailyUsageStats {
+  date: string
+  message_count: number
+  token_count: number
+  cost: number
+}
+
+export interface HourlyUsageStats {
+  hour: number
+  message_count: number
+  token_count: number
+}
+
+export interface AnalyticsResponse {
+  overview: UsageStatsResponse
+  model_breakdown: ModelUsageStats[]
+  daily_usage: DailyUsageStats[]
+  hourly_pattern: HourlyUsageStats[]
+  top_categories: Record<string, any>[]
+  cost_trends: Record<string, any>[]
+}
+
+export interface AnalyticsParams {
+  period?: '1d' | '7d' | '30d' | '90d' | '1y'
+  timezone?: string | null
+  model_filter?: string | null
+}
