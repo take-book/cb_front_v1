@@ -1,4 +1,6 @@
 import axios, { type AxiosInstance } from 'axios'
+import { ErrorHandler, logError } from '../utils/errorHandler'
+import { ERROR_CODES } from '../types/errors'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -35,12 +37,13 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Response interceptor
+// Response interceptor with standardized error handling
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
 
+    // Handle 401 errors with token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
@@ -64,25 +67,42 @@ apiClient.interceptors.response.use(
           // Refresh failed, clear storage and notify app
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
+          
+          const normalizedError = ErrorHandler.normalize(refreshError)
+          logError(normalizedError, 'Token refresh failed')
+          
           if (onAuthFailure) {
             onAuthFailure()
           } else {
             window.location.href = '/login'
           }
-          return Promise.reject(refreshError)
+          return Promise.reject(normalizedError)
         }
       } else {
         // No refresh token, notify app
         localStorage.removeItem('access_token')
+        const authError = ErrorHandler.normalize({
+          message: 'Authentication required',
+          code: ERROR_CODES.UNAUTHORIZED,
+          statusCode: 401
+        })
+        
+        logError(authError, 'No refresh token available')
+        
         if (onAuthFailure) {
           onAuthFailure()
         } else {
           window.location.href = '/login'
         }
+        return Promise.reject(authError)
       }
     }
 
-    return Promise.reject(error)
+    // Normalize and log all other errors
+    const normalizedError = ErrorHandler.normalize(error)
+    logError(normalizedError, `API ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}`)
+
+    return Promise.reject(normalizedError)
   }
 )
 

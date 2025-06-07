@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useWebSocket } from './useWebSocket'
 import type { WebSocketMessage } from './useWebSocket'
 
@@ -125,6 +125,12 @@ export function useStreamingMessage() {
     currentStreamId.value = null
     isStreaming.value = false
   }
+
+  // Cleanup on component unmount to prevent memory leaks
+  onUnmounted(() => {
+    clearAllStreamingMessages()
+    disconnect()
+  })
 
   return {
     streamingMessages,

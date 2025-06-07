@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { authApi } from '@/api/client'
 import type { LoginResponse, UserInfo, UserRegisterResponse } from '../types/api'
-import { handleApiError } from '@/utils/errorHandler'
+import { normalizeError } from '@/utils/errorHandler'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -35,7 +35,7 @@ export const useAuthStore = defineStore('auth', {
         await this.fetchUserInfo()
       } catch (error) {
         this.logout()
-        const apiError = handleApiError(error)
+        const apiError = normalizeError(error)
         throw new Error(apiError.message)
       }
     },
@@ -46,7 +46,7 @@ export const useAuthStore = defineStore('auth', {
         this.user = response
       } catch (error) {
         this.logout()
-        const apiError = handleApiError(error)
+        const apiError = normalizeError(error)
         throw new Error(apiError.message)
       }
     },

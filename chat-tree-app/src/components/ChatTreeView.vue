@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef } from 'vue'
 import type { TreeNode } from '../types/api'
 import MarkdownContent from './MarkdownContent.vue'
 import { useTreeLayout } from '../composables/useTreeLayout'
@@ -108,15 +108,10 @@ const emit = defineEmits<{
 
 const containerRef = ref<HTMLElement>()
 
-// Filter tree structure to hide system messages when needed
-const filteredTreeStructure = computed(() => {
-  if (props.showSystemMessages || !props.treeStructure) {
-    return props.treeStructure
-  }
-  return filterSystemNodes(props.treeStructure)
-})
+// Memoization cache for filtered tree structures
+const filterCache = new Map<string, TreeNode | null>()
 
-// Filter system nodes from tree structure
+// Recursive filter function for system nodes
 const filterSystemNodes = (node: TreeNode): TreeNode | null => {
   if (node.role === 'system') {
     // If this is a system node, check if it has non-system children
@@ -155,9 +150,35 @@ const filterSystemNodes = (node: TreeNode): TreeNode | null => {
   }
 }
 
+// Filter tree structure to hide system messages when needed with proper memoization
+const filteredTreeStructure = computed(() => {
+  // Create cache key based on structure and visibility settings
+  const cacheKey = `${props.showSystemMessages}-${props.treeStructure?.uuid || 'null'}-${JSON.stringify(props.treeStructure?.children?.map(c => c.uuid) || [])}`
+  
+  if (props.showSystemMessages || !props.treeStructure) {
+    return props.treeStructure
+  }
+  
+  // Check cache first
+  if (filterCache.has(cacheKey)) {
+    return filterCache.get(cacheKey)
+  }
+  
+  // Compute filtered structure
+  const filtered = filterSystemNodes(props.treeStructure)
+  
+  // Cache result (with size limit to prevent memory leaks)
+  if (filterCache.size > 100) {
+    filterCache.clear() // Simple cache eviction
+  }
+  filterCache.set(cacheKey, filtered)
+  
+  return filtered
+})
+
 // Use the tree layout composable with filtered structure
 const { renderNodes, treeLayout, connections, nodeWidth, nodeHeight } = useTreeLayout(
-  filteredTreeStructure,
+  computed(() => filteredTreeStructure.value || null),
   computed(() => props.currentPath)
 )
 

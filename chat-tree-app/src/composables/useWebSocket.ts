@@ -53,10 +53,22 @@ export function useWebSocket() {
 
   const disconnect = () => {
     if (socket.value) {
-      socket.value.close()
+      // Remove all event listeners to prevent memory leaks
+      socket.value.onopen = null
+      socket.value.onclose = null
+      socket.value.onerror = null
+      socket.value.onmessage = null
+      
+      // Close the connection
+      if (socket.value.readyState === WebSocket.OPEN || socket.value.readyState === WebSocket.CONNECTING) {
+        socket.value.close()
+      }
+      
       socket.value = null
     }
     isConnected.value = false
+    isConnecting.value = false
+    error.value = null
   }
 
   const send = (message: any) => {
