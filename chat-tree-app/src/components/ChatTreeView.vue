@@ -96,18 +96,68 @@ interface Props {
   treeStructure: TreeNode | null
   selectedNodeUuid: string | null
   currentPath: TreeNode[]
+  showSystemMessages?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showSystemMessages: true
+})
 const emit = defineEmits<{
   'node-click': [nodeId: string]
 }>()
 
 const containerRef = ref<HTMLElement>()
 
-// Use the tree layout composable
+// Filter tree structure to hide system messages when needed
+const filteredTreeStructure = computed(() => {
+  if (props.showSystemMessages || !props.treeStructure) {
+    return props.treeStructure
+  }
+  return filterSystemNodes(props.treeStructure)
+})
+
+// Filter system nodes from tree structure
+const filterSystemNodes = (node: TreeNode): TreeNode | null => {
+  if (node.role === 'system') {
+    // If this is a system node, check if it has non-system children
+    const filteredChildren = node.children
+      .map(child => filterSystemNodes(child))
+      .filter(child => child !== null) as TreeNode[]
+    
+    // If system node has non-system children, return a modified version
+    // Otherwise, return the first non-system child or null
+    if (filteredChildren.length > 0) {
+      // If there are multiple children, we need to preserve the structure
+      // but hide the system node itself
+      if (filteredChildren.length === 1) {
+        return filteredChildren[0]
+      } else {
+        // Multiple children - create a virtual root
+        return {
+          uuid: `virtual-${node.uuid}`,
+          role: 'user', // Use user role as default for virtual nodes
+          content: '',
+          children: filteredChildren
+        }
+      }
+    }
+    return null
+  }
+  
+  // For non-system nodes, recursively filter children
+  const filteredChildren = node.children
+    .map(child => filterSystemNodes(child))
+    .filter(child => child !== null) as TreeNode[]
+  
+  return {
+    ...node,
+    children: filteredChildren
+  }
+}
+
+// Use the tree layout composable with filtered structure
 const { renderNodes, treeLayout, connections, nodeWidth, nodeHeight } = useTreeLayout(
-  computed(() => props.treeStructure),
+  filteredTreeStructure,
   computed(() => props.currentPath)
 )
 

@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import MessageStream from '../MessageStream.vue'
 import MarkdownContent from '../MarkdownContent.vue'
 import type { HistoryMessage } from '../../types/api'
@@ -9,6 +10,19 @@ const MockMarkdownContent = {
   template: '<div class="markdown-content">{{ content }}</div>',
   props: ['content']
 }
+
+// Mock the chats API
+vi.mock('../../api/chats', () => ({
+  chatApi: {
+    getCompleteChat: vi.fn(),
+    sendMessage: vi.fn(),
+    createChat: vi.fn(),
+    updateChat: vi.fn(),
+    deleteChat: vi.fn(),
+    getRecentChats: vi.fn(),
+    getChats: vi.fn()
+  }
+}))
 
 describe('MessageStream', () => {
   const mockMessages: HistoryMessage[] = [
@@ -29,8 +43,18 @@ describe('MessageStream', () => {
     }
   ]
 
+  const mockMessagesWithSystem: HistoryMessage[] = [
+    {
+      message_uuid: 'system-1',
+      role: 'system',
+      content: 'You are a helpful assistant.'
+    },
+    ...mockMessages
+  ]
+
   beforeEach(() => {
-    // Reset any global state if needed
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
   })
 
   it('should render empty state when no messages', () => {
@@ -206,5 +230,97 @@ describe('MessageStream', () => {
     })
 
     expect(wrapper.text()).toContain('3 messages')
+  })
+
+  describe('System Message Filtering', () => {
+    it('should show system messages when they are included in messages prop', () => {
+      const wrapper = mount(MessageStream, {
+        props: {
+          messages: mockMessagesWithSystem,
+          selectedMessageUuid: null,
+          isBranchingMode: false
+        },
+        global: {
+          components: {
+            MarkdownContent: MockMarkdownContent
+          }
+        }
+      })
+
+      expect(wrapper.text()).toContain('You are a helpful assistant.')
+      expect(wrapper.text()).toContain('4 messages')
+    })
+
+    it('should not show system messages when they are filtered out', () => {
+      const wrapper = mount(MessageStream, {
+        props: {
+          messages: mockMessages, // No system messages
+          selectedMessageUuid: null,
+          isBranchingMode: false
+        },
+        global: {
+          components: {
+            MarkdownContent: MockMarkdownContent
+          }
+        }
+      })
+
+      expect(wrapper.text()).not.toContain('You are a helpful assistant.')
+      expect(wrapper.text()).toContain('3 messages')
+    })
+
+    it('should handle empty message list after filtering', () => {
+      const systemOnlyMessages: HistoryMessage[] = [
+        {
+          message_uuid: 'system-1',
+          role: 'system',
+          content: 'You are a helpful assistant.'
+        }
+      ]
+
+      const wrapper = mount(MessageStream, {
+        props: {
+          messages: [], // Filtered out system messages
+          selectedMessageUuid: null,
+          isBranchingMode: false
+        },
+        global: {
+          components: {
+            MarkdownContent: MockMarkdownContent
+          }
+        }
+      })
+
+      expect(wrapper.text()).toContain('No conversation yet')
+      expect(wrapper.text()).toContain('Send a message to start')
+    })
+
+    it('should not show system message in role labels', () => {
+      const wrapper = mount(MessageStream, {
+        props: {
+          messages: mockMessages, // Should not contain system messages
+          selectedMessageUuid: null,
+          isBranchingMode: false
+        },
+        global: {
+          components: {
+            MarkdownContent: MockMarkdownContent
+          }
+        }
+      })
+
+      // Should only show "You" and "AI" labels, no "System" labels
+      expect(wrapper.text()).not.toContain('System')
+      
+      const userLabels = wrapper.findAll('.max-w-\\[80\\%\\]').filter(w => 
+        w.text().includes('You')
+      )
+      const aiLabels = wrapper.findAll('.max-w-\\[80\\%\\]').filter(w => 
+        w.text().includes('AI')
+      )
+
+      expect(userLabels).toHaveLength(2) // 2 user messages
+      expect(aiLabels).toHaveLength(1) // 1 assistant message
+    })
   })
 })

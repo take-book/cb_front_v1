@@ -71,8 +71,16 @@
         </div>
       </div>
       
+      <!-- Streaming Message -->
+      <div 
+        v-if="streamingMessage" 
+        class="flex justify-start"
+      >
+        <StreamingMessage :message="streamingMessage" />
+      </div>
+      
       <!-- Empty state -->
-      <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
+      <div v-if="messages.length === 0 && !streamingMessage" class="flex items-center justify-center h-full">
         <div class="text-center text-gray-500">
           <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -88,17 +96,21 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'
 import MarkdownContent from './MarkdownContent.vue'
+import StreamingMessage from './StreamingMessage.vue'
 import type { HistoryMessage } from '../types/api'
+import type { StreamingMessage as StreamingMessageType } from '../composables/useStreamingMessage'
 
 interface Props {
   messages: HistoryMessage[]
   selectedMessageUuid?: string | null
   isBranchingMode?: boolean
+  streamingMessage?: StreamingMessageType | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   selectedMessageUuid: null,
-  isBranchingMode: false
+  isBranchingMode: false,
+  streamingMessage: null
 })
 
 const emit = defineEmits<{

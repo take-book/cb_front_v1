@@ -278,4 +278,82 @@ describe('Chats Store (Updated)', () => {
       expect(store.recentChats[0].title).toBe('Matching Chat')
     })
   })
+
+  describe('System Message Visibility', () => {
+    it('should have system messages visible by default', () => {
+      const store = useChatsStore()
+      expect(store.showSystemMessages).toBe(true)
+    })
+
+    it('should toggle system message visibility', () => {
+      const store = useChatsStore()
+      
+      expect(store.showSystemMessages).toBe(true)
+      
+      store.toggleSystemMessages()
+      expect(store.showSystemMessages).toBe(false)
+      
+      store.toggleSystemMessages()
+      expect(store.showSystemMessages).toBe(true)
+    })
+
+    it('should filter messages when system messages are hidden', async () => {
+      const { chatApi } = await import('../../api/chats')
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      // All messages should be visible by default
+      const allMessages = store.getFilteredMessages()
+      expect(allMessages).toHaveLength(2)
+      
+      // Hide system messages
+      store.toggleSystemMessages()
+      const filteredMessages = store.getFilteredMessages()
+      expect(filteredMessages).toHaveLength(2) // Only user and assistant messages
+      expect(filteredMessages.every(msg => msg.role !== 'system')).toBe(true)
+    })
+
+    it('should filter tree nodes when system messages are hidden', async () => {
+      const { chatApi } = await import('../../api/chats')
+      const mockDataWithSystem: CompleteChatDataResponse = {
+        ...mockCompleteData,
+        tree_structure: {
+          uuid: 'root',
+          role: 'system',
+          content: 'System prompt',
+          children: [
+            {
+              uuid: 'msg1',
+              role: 'user',
+              content: 'Hello',
+              children: [
+                {
+                  uuid: 'msg2',
+                  role: 'assistant',
+                  content: 'Hi there!',
+                  children: []
+                }
+              ]
+            }
+          ]
+        }
+      }
+      
+      vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockDataWithSystem)
+      
+      const store = useChatsStore()
+      await store.loadCompleteChat('test-chat')
+      
+      // System message should be visible in tree by default
+      expect(store.shouldShowNodeInTree('root')).toBe(true)
+      
+      // Hide system messages
+      store.toggleSystemMessages()
+      expect(store.shouldShowNodeInTree('root')).toBe(false)
+      expect(store.shouldShowNodeInTree('msg1')).toBe(true)
+      expect(store.shouldShowNodeInTree('msg2')).toBe(true)
+    })
+  })
 })

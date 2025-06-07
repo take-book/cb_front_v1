@@ -24,6 +24,9 @@ export const useChatsStore = defineStore('chats', () => {
   const totalChats = ref(0)
   const currentPage = ref(1)
   const totalPages = ref(1)
+  
+  // System message visibility state
+  const showSystemMessages = ref(true)
 
   // Computed getters
   const treeStructure = computed((): TreeNode | null => {
@@ -361,6 +364,26 @@ export const useChatsStore = defineStore('chats', () => {
     }
   }
 
+  // System message visibility functions
+  function toggleSystemMessages() {
+    showSystemMessages.value = !showSystemMessages.value
+  }
+
+  function getFilteredMessages(): HistoryMessage[] {
+    if (showSystemMessages.value) {
+      return messages.value
+    }
+    return messages.value.filter(msg => msg.role !== 'system')
+  }
+
+  function shouldShowNodeInTree(nodeUuid: string): boolean {
+    if (showSystemMessages.value) {
+      return true
+    }
+    const node = findNodeInTree(nodeUuid)
+    return node ? node.role !== 'system' : true
+  }
+
   // Reset store
   function reset() {
     currentChatUuid.value = null
@@ -383,6 +406,7 @@ export const useChatsStore = defineStore('chats', () => {
     totalChats,
     currentPage,
     totalPages,
+    showSystemMessages,
 
     // Computed
     treeStructure,
@@ -411,7 +435,12 @@ export const useChatsStore = defineStore('chats', () => {
     getNodeChildren,
     getNodeParent,
     findLatestLeafNode,
-    autoSelectLatestNode
+    autoSelectLatestNode,
+
+    // System message visibility
+    toggleSystemMessages,
+    getFilteredMessages,
+    shouldShowNodeInTree
   }
 })
 

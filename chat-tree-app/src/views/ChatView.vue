@@ -18,8 +18,23 @@
               {{ chatsStore.chatTitle }}
             </h1>
           </div>
-          <div class="text-sm text-gray-500">
-            {{ chatsStore.messages.length || 0 }} messages
+          <div class="flex items-center space-x-4">
+            <button
+              @click="chatsStore.toggleSystemMessages()"
+              data-test="system-messages-toggle"
+              class="system-messages-toggle flex items-center space-x-2 px-3 py-1.5 text-xs font-medium rounded-md transition-colors hover:bg-gray-100"
+              :class="chatsStore.showSystemMessages ? 'text-gray-700 bg-gray-50' : 'text-gray-500'"
+            >
+              <span class="system-toggle-icon">
+                {{ chatsStore.showSystemMessages ? '👁️' : '🙈' }}
+              </span>
+              <span>
+                {{ chatsStore.showSystemMessages ? 'Hide System Messages' : 'Show System Messages' }}
+              </span>
+            </button>
+            <div class="text-sm text-gray-500">
+              {{ chatsStore.messages.length || 0 }} messages
+            </div>
           </div>
         </div>
       </div>
@@ -65,6 +80,7 @@
           :tree-structure="chatsStore.treeStructure"
           :selected-node-uuid="chatsStore.selectedNodeUuid"
           :current-path="chatsStore.currentPath"
+          :show-system-messages="chatsStore.showSystemMessages"
           @node-click="handleNodeClick"
         />
       </div>
@@ -82,9 +98,10 @@
         <!-- Message Stream (Top) -->
         <div class="flex-1 min-h-0">
           <MessageStream
-            :messages="conversationMessages"
+            :messages="filteredConversationMessages"
             :selected-message-uuid="chatsStore.selectedNodeUuid"
             :is-branching-mode="chatsStore.isBranchingMode"
+            :streaming-message="currentStreamingMessage"
             @select-message="handleMessageSelect"
           />
         </div>
@@ -198,6 +215,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatsStore } from '../stores/chats'
+import { useStreamingMessage } from '../composables/useStreamingMessage'
 import ChatTreeView from '../components/ChatTreeView.vue'
 import MessageStream from '../components/MessageStream.vue'
 import MarkdownContent from '../components/MarkdownContent.vue'
@@ -208,10 +226,18 @@ import type { HistoryMessage, TreeNode, ModelDto } from '../types/api'
 const route = useRoute()
 const router = useRouter()
 const chatsStore = useChatsStore()
+const { 
+  currentStreamingMessage, 
+  isStreaming, 
+  sendStreamingMessage, 
+  initializeWebSocket,
+  clearStreamingMessage 
+} = useStreamingMessage()
 
 const newMessage = ref('')
 const mainContent = ref<HTMLElement>()
 const selectedModelId = ref<string | null>(null)
+const useStreaming = ref(true) // Toggle for streaming vs traditional
 
 // Resizable panels state  
 const leftPanelWidth = ref(Math.max(300, window.innerWidth - 600)) // Default: window width - 600px for right panel
@@ -234,6 +260,15 @@ const conversationMessages = computed((): HistoryMessage[] => {
     chatsStore.messages,
     chatsStore.selectedNodeUuid
   )
+})
+
+// Get filtered conversation messages based on system message visibility
+const filteredConversationMessages = computed((): HistoryMessage[] => {
+  const messages = conversationMessages.value
+  if (chatsStore.showSystemMessages) {
+    return messages
+  }
+  return messages.filter(msg => msg.role !== 'system')
 })
 
 // Get selected message details (keeping for compatibility)
@@ -279,25 +314,41 @@ const handleSendMessage = async () => {
     content: newMessage.value.trim(),
     chatUuid: chatUuid.value,
     isBranchingMode: chatsStore.isBranchingMode,
-    selectedNode: chatsStore.selectedNodeUuid
+    selectedNode: chatsStore.selectedNodeUuid,
+    useStreaming: useStreaming.value
   })
 
   try {
-    const response = await chatsStore.sendMessage(newMessage.value.trim(), selectedModelId.value)
-    console.log('Message sent successfully:', response)
-    
-    if (response) {
+    if (useStreaming.value) {
+      // Use WebSocket streaming
+      await sendStreamingMessage(
+        chatUuid.value,
+        newMessage.value.trim(),
+        chatsStore.selectedNodeUuid,
+        selectedModelId.value
+      )
       newMessage.value = ''
       
-      // Show appropriate feedback based on mode
-      if (chatsStore.isBranchingMode) {
-        console.log('🌿 New branch created! You can continue this conversation or select another node to branch again.')
-        // Auto-select the new message after branching for easy continuation
-        setTimeout(() => {
-          // The new message should be auto-selected by the store's autoSelectLatestNode
-        }, 500)
-      } else {
-        chatsStore.clearSelection()
+      // Handle completion when streaming finishes
+      // This would typically be handled in a watcher or event handler
+    } else {
+      // Use traditional API
+      const response = await chatsStore.sendMessage(newMessage.value.trim(), selectedModelId.value)
+      console.log('Message sent successfully:', response)
+      
+      if (response) {
+        newMessage.value = ''
+        
+        // Show appropriate feedback based on mode
+        if (chatsStore.isBranchingMode) {
+          console.log('🌿 New branch created! You can continue this conversation or select another node to branch again.')
+          // Auto-select the new message after branching for easy continuation
+          setTimeout(() => {
+            // The new message should be auto-selected by the store's autoSelectLatestNode
+          }, 500)
+        } else {
+          chatsStore.clearSelection()
+        }
       }
     }
   } catch (error) {
