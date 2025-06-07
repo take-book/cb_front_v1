@@ -168,7 +168,13 @@ describe('ChatPanelLayout', () => {
         showSystemMessages: true,
         isBranchingMode: true,
         filteredConversationMessages: mockMessages,
-        streamingMessage: { content: 'Streaming...', isComplete: false }
+        streamingMessage: { 
+          id: 'stream-1',
+          role: 'assistant' as const,
+          content: 'Streaming...',
+          isComplete: false,
+          timestamp: Date.now()
+        }
       }
     })
 
@@ -176,7 +182,10 @@ describe('ChatPanelLayout', () => {
     expect(messageStream.props('messages')).toEqual(mockMessages)
     expect(messageStream.props('selectedMessageUuid')).toBe('msg2')
     expect(messageStream.props('isBranchingMode')).toBe(true)
-    expect(messageStream.props('streamingMessage')).toEqual({ content: 'Streaming...', isComplete: false })
+    expect(messageStream.props('streamingMessage')).toEqual(expect.objectContaining({
+      content: 'Streaming...',
+      isComplete: false
+    }))
   })
 
   it('should emit node-click when ChatTreeView emits it', async () => {

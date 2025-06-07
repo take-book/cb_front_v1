@@ -23,6 +23,7 @@
       :is-branching-mode="chatsStore.isBranchingMode"
       :filtered-conversation-messages="filteredConversationMessages"
       :streaming-message="currentStreamingMessage"
+      :streaming-messages="streamingMessages"
       @node-click="handleNodeClick"
       @select-message="handleMessageSelect"
       @clear-selection="chatsStore.clearSelection"
@@ -75,8 +76,31 @@
               </div>
             </div>
             <div class="flex justify-between items-center mt-2">
-              <div class="text-xs text-gray-500">
-                ⌘+Enter or Ctrl+Enter to send
+              <div class="flex items-center space-x-4">
+                <div class="text-xs text-gray-500">
+                  ⌘+Enter or Ctrl+Enter to send
+                </div>
+                <div class="flex items-center space-x-2">
+                  <label class="text-xs text-gray-600">Streaming:</label>
+                  <button
+                    type="button"
+                    @click="useStreaming = !useStreaming"
+                    :class="[
+                      'relative inline-flex h-4 w-8 items-center rounded-full transition-colors',
+                      useStreaming ? 'bg-indigo-600' : 'bg-gray-300'
+                    ]"
+                  >
+                    <span
+                      :class="[
+                        'inline-block h-3 w-3 transform rounded-full bg-white transition',
+                        useStreaming ? 'translate-x-4' : 'translate-x-0.5'
+                      ]"
+                    />
+                  </button>
+                  <span class="text-xs" :class="useStreaming ? 'text-indigo-600' : 'text-gray-500'">
+                    {{ useStreaming ? 'SSE' : 'REST' }}
+                  </span>
+                </div>
               </div>
               <div class="text-xs" 
                    :class="chatsStore.isBranchingMode ? 'text-orange-600' : 'text-green-600'">
@@ -92,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatsStore } from '../stores/chats'
 import { useStreamingMessage } from '../composables/useStreamingMessage'
@@ -108,8 +132,9 @@ const {
   currentStreamingMessage, 
   isStreaming, 
   sendStreamingMessage, 
-  initializeWebSocket,
-  clearStreamingMessage 
+  initializeSSE,
+  clearStreamingMessage,
+  streamingMessages
 } = useStreamingMessage()
 
 const newMessage = ref('')
@@ -124,6 +149,26 @@ watch(chatUuid, async (newChatUuid) => {
     await chatsStore.loadCompleteChat(newChatUuid)
   }
 }, { immediate: true })
+
+// Watch for streaming completion and reload chat data
+watchEffect(() => {
+  if (!isStreaming.value && chatUuid.value) {
+    // Check if we have any completed assistant messages that aren't in the store yet
+    const assistantMessages = Array.from(streamingMessages.value.values())
+      .filter(msg => msg.role === 'assistant' && msg.isComplete)
+    
+    if (assistantMessages.length > 0) {
+      // Reload chat data after a short delay to ensure backend has processed the message
+      setTimeout(() => {
+        if (chatUuid.value) {
+          chatsStore.loadCompleteChat(chatUuid.value)
+          // Clear streaming messages after reload
+          assistantMessages.forEach(msg => clearStreamingMessage(msg.id))
+        }
+      }, 1000)
+    }
+  }
+})
 
 // Get conversation messages for the current thread
 const conversationMessages = computed((): HistoryMessage[] => {
@@ -192,7 +237,7 @@ const handleSendMessage = async () => {
 
   try {
     if (useStreaming.value) {
-      // Use WebSocket streaming
+      // Use SSE streaming
       await sendStreamingMessage(
         chatUuid.value,
         newMessage.value.trim(),

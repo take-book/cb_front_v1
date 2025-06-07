@@ -53,6 +53,7 @@
             :selected-message-uuid="selectedNodeUuid"
             :is-branching-mode="isBranchingMode"
             :streaming-message="streamingMessage"
+            :streaming-messages="streamingMessages"
             @select-message="handleMessageSelect"
           />
         </div>
@@ -103,6 +104,7 @@ import ChatTreeView from './ChatTreeView.vue'
 import MessageStream from './MessageStream.vue'
 import ResizablePanels from './ResizablePanels.vue'
 import type { TreeNode, HistoryMessage } from '../types/api'
+import type { StreamingMessage } from '../composables/useStreamingMessage'
 
 interface Props {
   isLoading: boolean
@@ -114,7 +116,8 @@ interface Props {
   showSystemMessages: boolean
   isBranchingMode: boolean
   filteredConversationMessages?: HistoryMessage[]
-  streamingMessage?: any
+  streamingMessage?: StreamingMessage | null
+  streamingMessages?: Map<string, StreamingMessage> | null
 }
 
 defineProps<Props>()
