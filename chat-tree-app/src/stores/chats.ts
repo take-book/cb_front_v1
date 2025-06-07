@@ -252,6 +252,17 @@ export const useChatsStore = defineStore('chats', () => {
     try {
       const response = await chatApi.getRecentChats({ page, limit })
       recentChats.value = response.items as ChatListItem[]
+      
+      // Debug: Log fetched chats to check uuid field
+      if (import.meta.env.DEV && recentChats.value.length > 0) {
+        console.log('Fetched recent chats:', recentChats.value.map(chat => ({
+          uuid: chat.uuid,
+          title: chat.title,
+          hasUuid: !!chat.uuid,
+          uuidType: typeof chat.uuid
+        })))
+      }
+      
       totalChats.value = response.total
       currentPage.value = response.page
       totalPages.value = response.pages

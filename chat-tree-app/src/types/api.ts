@@ -157,9 +157,11 @@ export interface UserInfo {
 
 // Simplified Chat Item for lists
 export interface ChatListItem {
-  chat_uuid: string
+  uuid: string
   title: string
+  preview: string
   updated_at: string
+  created_at: string
   message_count: number
 }
 

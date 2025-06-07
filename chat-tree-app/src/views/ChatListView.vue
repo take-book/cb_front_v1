@@ -79,14 +79,15 @@
       <div v-else class="space-y-4">
         <div
           v-for="chat in chatsStore.recentChats"
-          :key="chat.chat_uuid"
+          :key="chat.uuid"
           data-test="chat-item"
           class="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
         >
           <div class="flex items-center justify-between">
             <RouterLink
-              :to="`/chats/${chat.chat_uuid}`"
+              :to="`/chats/${chat.uuid}`"
               class="flex-1 block"
+              @click="logChatNavigation(chat)"
             >
               <h3 class="text-lg font-medium text-gray-900">{{ chat.title }}</h3>
               <div class="mt-1 flex items-center text-sm text-gray-500 space-x-4">
@@ -96,7 +97,7 @@
             </RouterLink>
             
             <button
-              @click.stop="handleDeleteChat(chat.chat_uuid)"
+              @click.stop="handleDeleteChat(chat.uuid)"
               data-test="delete-chat"
               class="ml-4 p-2 text-gray-400 hover:text-red-600 transition-colors"
             >
@@ -233,6 +234,15 @@ const loadPage = (page: number) => {
   } else {
     chatsStore.fetchRecentChats(page)
   }
+}
+
+const logChatNavigation = (chat: any) => {
+  console.log('Navigating to chat:', {
+    uuid: chat.uuid,
+    title: chat.title,
+    linkUrl: `/chats/${chat.uuid}`,
+    chatObject: chat
+  })
 }
 
 const formatDate = (dateString: string) => {
