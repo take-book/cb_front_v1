@@ -157,8 +157,7 @@ export const healthCheck = async (): Promise<boolean> => {
   }
 }
 
-// Also set up the default axios instance for auth module
-axios.defaults.baseURL = API_BASE_URL
+// Note: We don't set axios.defaults.baseURL as it can conflict with our custom instance
 
 // Log API base URL for debugging in development only
 if (import.meta.env.DEV) {

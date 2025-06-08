@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { chatApi } from '../../api/chats'
+import { mockPaginatedResponse, shouldUseMockData } from '../mockData'
 import type { 
   CompleteChatDataResponse, 
   TreeNode, 
@@ -10,7 +11,7 @@ import type {
   PaginatedResponse
 } from '../../types/api'
 
-export const useChatDataStore = defineStore('chatData', () => {
+export const useChatListStore = defineStore('chatList', () => {
   // Core data state
   const currentChatUuid = ref<string | null>(null)
   const chatData = ref<CompleteChatDataResponse | null>(null)
@@ -149,12 +150,17 @@ export const useChatDataStore = defineStore('chatData', () => {
   async function fetchRecentChats(page = 1, limit = 20) {
     console.log('fetchRecentChats called:', { page, limit })
     
-    // Check if user is authenticated before making the request
-    const accessToken = localStorage.getItem('access_token')
-    if (!accessToken) {
-      console.warn('fetchRecentChats: No access token available')
-      error.value = 'Authentication required. Please log in.'
-      return
+    // In development mode, skip auth token check
+    if (!import.meta.env.DEV) {
+      // Check if user is authenticated before making the request
+      const accessToken = localStorage.getItem('access_token')
+      if (!accessToken) {
+        console.warn('fetchRecentChats: No access token available')
+        error.value = 'Authentication required. Please log in.'
+        return
+      }
+    } else {
+      console.log('Development mode: skipping auth token check')
     }
     
     isLoading.value = true
@@ -192,6 +198,20 @@ export const useChatDataStore = defineStore('chatData', () => {
       
     } catch (err: any) {
       console.error('fetchRecentChats error:', err)
+      
+      // In development mode, fallback to mock data if backend is unavailable
+      if (import.meta.env.DEV && (err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK' || err.response?.status === 404)) {
+        console.log('Backend unavailable in dev mode, using mock data')
+        const mockResponse = mockPaginatedResponse
+        
+        recentChats.value = mockResponse.items as ChatListItem[]
+        totalChats.value = mockResponse.total
+        currentPage.value = mockResponse.page
+        totalPages.value = mockResponse.pages
+        
+        error.value = null // Clear error since we're using mock data
+        return
+      }
       
       if (err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK') {
         error.value = 'Cannot connect to backend server. Please ensure it is running on port 8000.'
@@ -272,3 +292,6 @@ export const useChatDataStore = defineStore('chatData', () => {
     reset
   }
 })
+
+// For backward compatibility
+export { useChatListStore as useChatDataStore }

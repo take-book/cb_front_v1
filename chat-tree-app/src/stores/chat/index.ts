@@ -1,33 +1,33 @@
 import { computed } from 'vue'
-import { useChatDataStore } from './chatData'
+import { useChatListStore } from './chatData'
 import { useChatNavigationStore } from './chatNavigation'
 import type { HistoryMessage } from '../../types/api'
 
-// Unified chat store that combines data and navigation stores
-export const useChatsStore = () => {
-  const dataStore = useChatDataStore()
+// Chat detail store that combines list data and navigation stores
+export const useChatDetailStore = () => {
+  const listStore = useChatListStore()
   const navigationStore = useChatNavigationStore()
 
   // Computed properties that depend on both stores
   const selectedNode = computed(() => {
-    return navigationStore.getSelectedNode(dataStore.treeStructure)
+    return navigationStore.getSelectedNode(listStore.treeStructure)
   })
 
   const isBranchingMode = computed(() => {
-    return navigationStore.getIsBranchingMode(dataStore.treeStructure)
+    return navigationStore.getIsBranchingMode(listStore.treeStructure)
   })
 
   // Enhanced navigation functions that work with current tree
   const selectNode = (nodeUuid: string) => {
-    navigationStore.selectNode(nodeUuid, dataStore.treeStructure)
+    navigationStore.selectNode(nodeUuid, listStore.treeStructure)
   }
 
   const autoSelectLatestNode = () => {
     // Try to restore preserved selection first, otherwise auto-select latest
     setTimeout(() => {
-      const wasRestored = navigationStore.restorePreservedSelection(dataStore.treeStructure, true)
+      const wasRestored = navigationStore.restorePreservedSelection(listStore.treeStructure, true)
       if (!wasRestored) {
-        navigationStore.autoSelectLatestNode(dataStore.treeStructure)
+        navigationStore.autoSelectLatestNode(listStore.treeStructure)
       }
     }, 100)
   }
@@ -41,7 +41,7 @@ export const useChatsStore = () => {
       parentMessageUuid = navigationStore.selectedNodeUuid
     }
 
-    const response = await dataStore.sendMessage(content, modelId, parentMessageUuid)
+    const response = await listStore.sendMessage(content, modelId, parentMessageUuid)
     
     // Auto-select after successful send
     if (response) {
@@ -53,7 +53,7 @@ export const useChatsStore = () => {
 
   // Enhanced loadCompleteChat that handles navigation
   const loadCompleteChat = async (chatUuid: string) => {
-    await dataStore.loadCompleteChat(chatUuid)
+    await listStore.loadCompleteChat(chatUuid)
     
     // Reset selection and path
     navigationStore.clearSelection()
@@ -65,50 +65,63 @@ export const useChatsStore = () => {
   // System message filtering
   const getFilteredMessages = (): HistoryMessage[] => {
     if (navigationStore.showSystemMessages) {
-      return dataStore.messages
+      return listStore.messages
     }
-    return dataStore.messages.filter(msg => msg.role !== 'system')
+    return listStore.messages.filter(msg => msg.role !== 'system')
   }
 
   // Preserve selection for streaming
   const preserveSelectionForStreaming = () => {
-    navigationStore.preserveSelectionForStreaming(dataStore.treeStructure)
+    navigationStore.preserveSelectionForStreaming(listStore.treeStructure)
   }
 
   const restorePreservedSelection = (preferNewBranch: boolean = false) => {
-    return navigationStore.restorePreservedSelection(dataStore.treeStructure, preferNewBranch)
+    return navigationStore.restorePreservedSelection(listStore.treeStructure, preferNewBranch)
   }
 
   // Tree utilities with current tree context
   const isLeafNode = (nodeUuid: string) => {
-    return navigationStore.isLeafNode(nodeUuid, dataStore.treeStructure)
+    return navigationStore.isLeafNode(nodeUuid, listStore.treeStructure)
   }
 
   const getNodeChildren = (nodeUuid: string) => {
-    return navigationStore.getNodeChildren(nodeUuid, dataStore.treeStructure)
+    return navigationStore.getNodeChildren(nodeUuid, listStore.treeStructure)
   }
 
   const getNodeParent = (nodeUuid: string) => {
-    return navigationStore.getNodeParent(nodeUuid, dataStore.treeStructure)
+    return navigationStore.getNodeParent(nodeUuid, listStore.treeStructure)
   }
 
   const findLatestLeafNode = () => {
-    return dataStore.treeStructure ? navigationStore.findLatestLeafNode(dataStore.treeStructure) : null
+    return listStore.treeStructure ? navigationStore.findLatestLeafNode(listStore.treeStructure) : null
   }
 
   const shouldShowNodeInTree = (nodeUuid: string) => {
-    return navigationStore.shouldShowNodeInTree(nodeUuid, dataStore.treeStructure)
+    return navigationStore.shouldShowNodeInTree(nodeUuid, listStore.treeStructure)
   }
 
   // Reset both stores
   const reset = () => {
-    dataStore.reset()
+    listStore.reset()
     navigationStore.clearSelection()
   }
 
   return {
-    // State from both stores
-    ...dataStore,
+    // State from list store
+    currentChatUuid: listStore.currentChatUuid,
+    chatData: listStore.chatData,
+    isLoading: listStore.isLoading,
+    error: listStore.error,
+    recentChats: listStore.recentChats,
+    totalChats: listStore.totalChats,
+    currentPage: listStore.currentPage,
+    totalPages: listStore.totalPages,
+    treeStructure: listStore.treeStructure,
+    messages: listStore.messages,
+    chatTitle: listStore.chatTitle,
+    systemPrompt: listStore.systemPrompt,
+    
+    // State from navigation store
     selectedNodeUuid: navigationStore.selectedNodeUuid,
     currentPath: navigationStore.currentPath,
     showSystemMessages: navigationStore.showSystemMessages,
@@ -144,14 +157,15 @@ export const useChatsStore = () => {
     // System message filtering
     getFilteredMessages,
     
-    // Pass through data store actions
-    createNewChat: dataStore.createNewChat,
-    updateChatMetadata: dataStore.updateChatMetadata,
-    deleteChat: dataStore.deleteChat,
-    fetchRecentChats: dataStore.fetchRecentChats,
-    searchChats: dataStore.searchChats
+    // Pass through list store actions
+    createNewChat: listStore.createNewChat,
+    updateChatMetadata: listStore.updateChatMetadata,
+    deleteChat: listStore.deleteChat,
+    fetchRecentChats: listStore.fetchRecentChats,
+    searchChats: listStore.searchChats
   }
 }
 
 // For backward compatibility
-export { useChatsStore as useChatStore }
+export { useChatDetailStore as useChatsStore }
+export { useChatDetailStore as useChatStore }

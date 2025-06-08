@@ -3,20 +3,26 @@ import type { ChatListItem, PaginatedResponse, CompleteChatDataResponse, TreeNod
 // Mock chat list data for development
 export const mockChatList: ChatListItem[] = [
   {
-    chat_uuid: 'mock-chat-1',
+    uuid: 'mock-chat-1',
     title: 'First Chat (Mock)',
+    preview: 'Hello! Can you help me understand...',
+    created_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
     updated_at: new Date().toISOString(),
     message_count: 5
   },
   {
-    chat_uuid: 'mock-chat-2',
+    uuid: 'mock-chat-2',
     title: 'Second Chat (Mock)',
+    preview: 'I need help with debugging my...',
+    created_at: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
     updated_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     message_count: 3
   },
   {
-    chat_uuid: 'mock-chat-3',
+    uuid: 'mock-chat-3',
     title: 'Third Chat (Mock)',
+    preview: 'Can you explain how React hooks...',
+    created_at: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
     updated_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
     message_count: 8
   }
@@ -79,7 +85,9 @@ export const mockCompleteChat: CompleteChatDataResponse = {
   tree_structure: mockTreeStructure,
   metadata: {
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    message_count: 4,
+    owner_id: 'mock-user-1'
   }
 }
 

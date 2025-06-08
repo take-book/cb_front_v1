@@ -79,7 +79,7 @@
           <h4 class="font-medium text-gray-900 mb-2">Debug Info:</h4>
           <div class="text-sm text-gray-600 space-y-1">
             <div>Auth Status: {{ authStore.isAuthenticated ? 'Authenticated' : 'Not Authenticated' }}</div>
-            <div>Has Access Token: {{ !!localStorage.getItem('access_token') }}</div>
+            <div>Has Access Token: {{ hasAccessToken }}</div>
             <div>Store Loading: {{ chatsStore.isLoading }}</div>
             <div>Store Error: {{ chatsStore.error || 'None' }}</div>
             <div>Total Chats: {{ chatsStore.totalChats }}</div>
@@ -149,9 +149,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useChatsStore } from '../stores/chats'
+import { useChatListStore } from '../stores/chat/chatData'
 import { useAuthStore } from '../stores/auth'
 import { healthCheck } from '../api/client'
 import ModelSelector from '../components/ModelSelector.vue'
@@ -159,7 +159,7 @@ import AppLayout from '../components/AppLayout.vue'
 import type { ModelDto } from '../types/api'
 
 const router = useRouter()
-const chatsStore = useChatsStore()
+const chatsStore = useChatListStore()
 const authStore = useAuthStore()
 
 const searchQuery = ref('')
@@ -169,6 +169,7 @@ let searchTimeout: number | undefined
 // Development debug info
 const isDev = import.meta.env.DEV
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const hasAccessToken = computed(() => !!localStorage.getItem('access_token'))
 
 // Debug function to force refetch
 const debugRefetch = async () => {
@@ -183,6 +184,13 @@ const debugRefetch = async () => {
 
 onMounted(async () => {
   try {
+    // In development mode, skip authentication and directly fetch chats
+    if (import.meta.env.DEV) {
+      console.log('Development mode: skipping authentication, fetching chats directly')
+      await chatsStore.fetchRecentChats()
+      return
+    }
+    
     // Ensure authentication is properly initialized before fetching chats
     if (!authStore.isAuthenticated && localStorage.getItem('access_token')) {
       console.log('Initializing auth from storage before fetching chats...')
@@ -269,10 +277,7 @@ const handleDeleteChat = async (chatUuid: string) => {
   }
 }
 
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
+// Removed unused handleLogout function
 
 const loadPage = (page: number) => {
   if (searchQuery.value) {

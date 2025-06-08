@@ -2,7 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useChatsStore } from '../stores/chats'
-import { useChatDataStore } from '../stores/chat/chatData'
+import { useChatListStore } from '../stores/chat/chatData'
 import { useChatNavigationStore } from '../stores/chat/chatNavigation'
 import { getBranchConversationThread } from '../utils/treeHelpers'
 import type { HistoryMessage, ModelDto } from '../types/api'
@@ -13,7 +13,7 @@ export function useChatCoordination() {
   const chatsStore = useChatsStore()
   
   // Get individual stores for storeToRefs
-  const dataStore = useChatDataStore()
+  const dataStore = useChatListStore()
   const navigationStore = useChatNavigationStore()
   
   // Extract reactive refs from individual stores

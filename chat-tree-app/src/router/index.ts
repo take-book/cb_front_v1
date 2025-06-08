@@ -55,9 +55,20 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
-  // Development mode: skip authentication for now
+  // Development mode: allow all navigation but still initialize auth if tokens exist
   if (import.meta.env.DEV) {
-    console.log('Development mode: skipping authentication')
+    console.log('Development mode: allowing navigation to', to.path)
+    
+    // Still try to initialize auth if tokens exist, but don't block navigation
+    const authStore = useAuthStore()
+    if (!authStore.user && localStorage.getItem('access_token')) {
+      try {
+        await authStore.initializeFromStorage()
+      } catch (error) {
+        console.warn('Auth initialization failed in dev mode:', error)
+      }
+    }
+    
     next()
     return
   }
