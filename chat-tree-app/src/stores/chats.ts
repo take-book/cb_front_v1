@@ -1,2 +1,3 @@
-// Re-export the new modular chat store for backward compatibility
-export { useChatsStore, useChatStore } from './chat/index'
+// Re-export the new modular chat stores
+export { useChatDetailStore } from './chat/index'
+export { useChatListStore } from './chat/chatData'

@@ -166,6 +166,3 @@ export const useChatDetailStore = () => {
   }
 }
 
-// For backward compatibility
-export { useChatDetailStore as useChatsStore }
-export { useChatDetailStore as useChatStore }

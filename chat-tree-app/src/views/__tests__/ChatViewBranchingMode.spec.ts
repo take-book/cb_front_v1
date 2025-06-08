@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import ChatView from '../ChatView.vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { useChatsStore } from '../../stores/chats'
+import { useChatDetailStore } from '../../stores/chats'
 import type { TreeNode } from '../../types/api'
 
 // Mock router
@@ -55,7 +55,7 @@ describe('ChatView - Branching Mode Selection Persistence', () => {
     mockIsStreaming.value = false
 
     setActivePinia(createPinia())
-    chatsStore = useChatsStore()
+    chatsStore = useChatDetailStore()
 
     // Mock chat data with branching structure
     const mockTreeStructure: TreeNode = {

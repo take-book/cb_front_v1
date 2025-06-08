@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ChatView from '../ChatView.vue'
-import { useChatsStore } from '@/stores/chats'
+import { useChatDetailStore } from '@/stores/chats'
 import { useAuthStore } from '@/stores/auth'
 import type { CompleteChatDataResponse, TreeNode } from '@/types/api'
 
@@ -95,7 +95,7 @@ describe('ChatView', () => {
   })
 
   it('should render chat interface with all components', async () => {
-    const chatsStore = useChatsStore()
+    const chatsStore = useChatDetailStore()
     chatsStore.chatData = mockChatData
     chatsStore.showSystemMessages = true
 
@@ -108,7 +108,7 @@ describe('ChatView', () => {
 
   describe('System Message Toggle', () => {
     it('should render system message toggle button', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = true
 
@@ -120,7 +120,7 @@ describe('ChatView', () => {
     })
 
     it('should show correct toggle text when system messages are visible', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = true
 
@@ -132,7 +132,7 @@ describe('ChatView', () => {
     })
 
     it('should show correct toggle text when system messages are hidden', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = false
 
@@ -144,7 +144,7 @@ describe('ChatView', () => {
     })
 
     it('should toggle system message visibility when button is clicked', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = true
       chatsStore.toggleSystemMessages = vi.fn()
@@ -158,7 +158,7 @@ describe('ChatView', () => {
     })
 
     it('should pass showSystemMessages prop to ChatTreeView', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = false
 
@@ -169,7 +169,7 @@ describe('ChatView', () => {
     })
 
     it('should pass filtered messages to MessageStream when system messages are hidden', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = false
       chatsStore.getFilteredMessages = vi.fn().mockReturnValue([
@@ -187,7 +187,7 @@ describe('ChatView', () => {
     })
 
     it('should pass all messages to MessageStream when system messages are visible', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = true
       chatsStore.getFilteredMessages = vi.fn().mockReturnValue(mockChatData.messages)
@@ -201,7 +201,7 @@ describe('ChatView', () => {
     })
 
     it('should be positioned in the header section', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = true
 
@@ -215,7 +215,7 @@ describe('ChatView', () => {
     })
 
     it('should have proper styling for toggle button', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = mockChatData
       chatsStore.showSystemMessages = true
 
@@ -229,7 +229,7 @@ describe('ChatView', () => {
 
   describe('Integration with Chat Store', () => {
     it('should load chat data on mount', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.loadCompleteChat = vi.fn()
 
       mount(ChatView)
@@ -238,7 +238,7 @@ describe('ChatView', () => {
     })
 
     it('should handle chat store state changes', async () => {
-      const chatsStore = useChatsStore()
+      const chatsStore = useChatDetailStore()
       chatsStore.chatData = null
       chatsStore.isLoading = true
 

@@ -293,5 +293,3 @@ export const useChatListStore = defineStore('chatList', () => {
   }
 })
 
-// For backward compatibility
-export { useChatListStore as useChatDataStore }

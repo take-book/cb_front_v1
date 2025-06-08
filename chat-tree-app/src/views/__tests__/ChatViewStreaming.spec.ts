@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import ChatView from '../ChatView.vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { useChatsStore } from '../../stores/chats'
+import { useChatDetailStore } from '../../stores/chats'
 import type { TreeNode, HistoryMessage } from '../../types/api'
 
 // Mock router
@@ -59,7 +59,7 @@ describe('ChatView Streaming Integration', () => {
 
     // Create pinia instance
     setActivePinia(createPinia())
-    chatsStore = useChatsStore()
+    chatsStore = useChatDetailStore()
 
     // Mock chat store data
     const mockTreeStructure: TreeNode = {

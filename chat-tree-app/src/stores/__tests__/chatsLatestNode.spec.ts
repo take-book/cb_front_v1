@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useChatsStore } from '../chats'
+import { useChatDetailStore } from '../chats'
 import type { TreeNode } from '../../types/api'
 
 describe('チャットストア - 最新ノード選択機能', () => {
-  let store: ReturnType<typeof useChatsStore>
+  let store: ReturnType<typeof useChatDetailStore>
 
   beforeEach(() => {
     setActivePinia(createPinia())
-    store = useChatsStore()
+    store = useChatDetailStore()
   })
 
   describe('findLatestLeafNode', () => {

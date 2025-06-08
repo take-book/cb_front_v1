@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useChatsStore } from '../chats'
+import { useChatDetailStore } from '../chats'
 import type { TreeNode } from '../../types/api'
 
 describe('Chats Store - New Branch Selection', () => {
-  let chatsStore: ReturnType<typeof useChatsStore>
+  let chatsStore: ReturnType<typeof useChatDetailStore>
 
   beforeEach(() => {
     setActivePinia(createPinia())
-    chatsStore = useChatsStore()
+    chatsStore = useChatDetailStore()
   })
 
   afterEach(() => {

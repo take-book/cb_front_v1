@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useChatsStore } from '../chats'
+import { useChatDetailStore } from '../chats'
 import type { CompleteChatDataResponse, TreeNode, HistoryMessage } from '../../types/api'
 
 // Mock the API
@@ -57,7 +57,7 @@ describe('Chats Store (Updated)', () => {
 
   describe('Initial State', () => {
     it('should have correct initial state', () => {
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       
       expect(store.currentChatUuid).toBeNull()
       expect(store.chatData).toBeNull()
@@ -74,7 +74,7 @@ describe('Chats Store (Updated)', () => {
       const { chatApi } = await import('../../api/chats')
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       expect(store.currentChatUuid).toBe('test-chat')
@@ -88,7 +88,7 @@ describe('Chats Store (Updated)', () => {
       const error = new Error('Failed to load')
       vi.mocked(chatApi.getCompleteChat).mockRejectedValueOnce(error)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       expect(store.error).toBe('Failed to load')
@@ -105,7 +105,7 @@ describe('Chats Store (Updated)', () => {
         content: 'AI response'
       })
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       await store.sendMessage('How are you?')
@@ -115,7 +115,7 @@ describe('Chats Store (Updated)', () => {
     })
 
     it('should return null when no chat is selected', async () => {
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       const result = await store.sendMessage('Hello')
       
       expect(result).toBeNull()
@@ -129,7 +129,7 @@ describe('Chats Store (Updated)', () => {
       vi.mocked(chatApi.createChat).mockResolvedValueOnce({ chat_uuid: 'new-chat' })
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       const result = await store.createNewChat('Hello, world!')
       
       expect(chatApi.createChat).toHaveBeenCalledWith('Hello, world!', undefined)
@@ -141,7 +141,7 @@ describe('Chats Store (Updated)', () => {
       vi.mocked(chatApi.createChat).mockResolvedValueOnce({ chat_uuid: 'new-chat' })
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       const result = await store.createNewChat()
       
       expect(chatApi.createChat).toHaveBeenCalledWith(undefined, undefined)
@@ -165,7 +165,7 @@ describe('Chats Store (Updated)', () => {
       
       vi.mocked(chatApi.getRecentChats).mockResolvedValueOnce(mockResponse)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.fetchRecentChats()
       
       expect(store.recentChats).toHaveLength(2)
@@ -179,7 +179,7 @@ describe('Chats Store (Updated)', () => {
       
       vi.mocked(chatApi.getRecentChats).mockRejectedValueOnce(error)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.fetchRecentChats()
       
       expect(store.error).toBe('Failed to fetch chats')
@@ -191,7 +191,7 @@ describe('Chats Store (Updated)', () => {
       const { chatApi } = await import('../../api/chats')
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       store.selectNode('msg1')
@@ -204,7 +204,7 @@ describe('Chats Store (Updated)', () => {
       const { chatApi } = await import('../../api/chats')
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       const foundNode = store.findNodeInTree('msg2')
@@ -217,7 +217,7 @@ describe('Chats Store (Updated)', () => {
       const { chatApi } = await import('../../api/chats')
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       // When no node is selected, not in branching mode
@@ -245,7 +245,7 @@ describe('Chats Store (Updated)', () => {
         pages: 1
       })
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       store.currentChatUuid = 'chat-to-delete'
       
       await store.deleteChat('chat-to-delete')
@@ -270,7 +270,7 @@ describe('Chats Store (Updated)', () => {
       
       vi.mocked(chatApi.getChats).mockResolvedValueOnce(mockResponse)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.searchChats('test query')
       
       expect(chatApi.getChats).toHaveBeenCalledWith({ q: 'test query', page: 1, limit: 20 })
@@ -281,12 +281,12 @@ describe('Chats Store (Updated)', () => {
 
   describe('System Message Visibility', () => {
     it('should have system messages visible by default', () => {
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       expect(store.showSystemMessages).toBe(true)
     })
 
     it('should toggle system message visibility', () => {
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       
       expect(store.showSystemMessages).toBe(true)
       
@@ -301,7 +301,7 @@ describe('Chats Store (Updated)', () => {
       const { chatApi } = await import('../../api/chats')
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockCompleteData)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       // All messages should be visible by default
@@ -343,7 +343,7 @@ describe('Chats Store (Updated)', () => {
       
       vi.mocked(chatApi.getCompleteChat).mockResolvedValueOnce(mockDataWithSystem)
       
-      const store = useChatsStore()
+      const store = useChatDetailStore()
       await store.loadCompleteChat('test-chat')
       
       // System message should be visible in tree by default

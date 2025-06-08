@@ -1,10 +1,10 @@
 import { ref, computed, watchEffect } from 'vue'
 import { useStreamingMessage } from './useStreamingMessage'
-import { useChatsStore } from '../stores/chats'
+import { useChatDetailStore } from '../stores/chats'
 import { useStoreErrorHandler } from './useStoreErrorHandler'
 
 export function useChatStreaming() {
-  const chatsStore = useChatsStore()
+  const chatsStore = useChatDetailStore()
   const { 
     currentStreamingMessage, 
     isStreaming, 
