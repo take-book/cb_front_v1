@@ -73,7 +73,7 @@
 
         <!-- Right side - User menu -->
         <div class="flex items-center">
-          <div class="hidden sm:flex sm:items-center sm:ml-6">
+          <div v-if="authStore.isAuthenticated" class="hidden sm:flex sm:items-center sm:ml-6">
             <div class="ml-3 relative">
               <div>
                 <button
@@ -93,14 +93,13 @@
               
               <div
                 v-show="showUserMenu"
-                v-click-outside="() => showUserMenu = false"
                 class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50"
                 role="menu"
                 aria-orientation="vertical"
                 aria-labelledby="user-menu"
               >
                 <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-                  {{ user?.username || 'User' }}
+                  {{ authStore.user?.username || 'User' }}
                 </div>
                 <button
                   @click="handleLogout"
@@ -186,7 +185,7 @@
         </RouterLink>
       </div>
       
-      <div class="pt-4 pb-3 border-t border-gray-200">
+      <div v-if="authStore.isAuthenticated" class="pt-4 pb-3 border-t border-gray-200">
         <div class="flex items-center px-4">
           <div class="flex-shrink-0">
             <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
@@ -196,7 +195,7 @@
             </div>
           </div>
           <div class="ml-3">
-            <div class="text-base font-medium text-gray-800">{{ user?.username || 'User' }}</div>
+            <div class="text-base font-medium text-gray-800">{{ authStore.user?.username || 'User' }}</div>
           </div>
         </div>
         <div class="mt-3 space-y-1">
@@ -224,11 +223,9 @@ const authStore = useAuthStore()
 const showUserMenu = ref(false)
 const showMobileMenu = ref(false)
 
-const { user } = authStore
-
 const userInitials = computed(() => {
-  if (!user?.username) return 'U'
-  return user.username.slice(0, 2).toUpperCase()
+  if (!authStore.user?.username) return 'U'
+  return authStore.user.username.slice(0, 2).toUpperCase()
 })
 
 const isActiveRoute = (path: string) => {
@@ -248,31 +245,26 @@ const handleLogout = async () => {
 // Click outside directive implementation
 const clickOutsideHandler = (event: MouseEvent) => {
   const target = event.target as Element
-  if (!target.closest('#user-menu') && !target.closest('[role="menu"]')) {
-    showUserMenu.value = false
+  const userMenuButton = document.querySelector('#user-menu')
+  const dropdownMenu = document.querySelector('[role="menu"]')
+  
+  // Don't close if clicking the button or the menu itself
+  if (userMenuButton?.contains(target) || dropdownMenu?.contains(target)) {
+    return
   }
+  
+  showUserMenu.value = false
 }
 
 onMounted(() => {
-  document.addEventListener('click', clickOutsideHandler)
+  // Add a small delay to avoid immediate closure on mount
+  setTimeout(() => {
+    document.addEventListener('click', clickOutsideHandler)
+  }, 100)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', clickOutsideHandler)
 })
 
-// Custom directive for click outside
-const vClickOutside = {
-  mounted(el: any, binding: any) {
-    el.clickOutsideEvent = function(event: Event) {
-      if (!(el === event.target || el.contains(event.target as Node))) {
-        binding.value()
-      }
-    }
-    document.addEventListener('click', el.clickOutsideEvent)
-  },
-  unmounted(el: any) {
-    document.removeEventListener('click', el.clickOutsideEvent)
-  }
-}
 </script>

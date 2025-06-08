@@ -86,19 +86,36 @@ const handleSendMessage = async (message: string) => {
     return
   }
 
+  // Store the original message (with spaces) for potential restoration
+  const originalMessage = message
+  const trimmedMessage = message.trim()
+  
   // Clear the message input immediately after getting the message
   newMessage.value = ''
 
   try {
-    await sendMessage(
+    const result = await sendMessage(
       chatUuid.value,
-      message.trim(),
+      trimmedMessage,
       selectedNodeUuid.value || undefined,
       selectedModelId.value || undefined
     )
+    
+    // If sendMessage returns null (handled error), don't restore message
+    // The error was already handled internally by handleAsyncOperation
+    if (result === null) {
+      // Message should remain cleared - the error was handled gracefully
+      // This includes network errors, streaming errors, etc. that are handled by the error handler
+      return
+    }
+    
+    // Success case - message should remain cleared
   } catch (error) {
-    // Restore the message if there was an error
-    newMessage.value = message
+    // Only restore message for unhandled errors (validation, auth, network)
+    // These are errors thrown before the message was accepted by the backend
+    // Examples: missing chatUuid, auth token issues, parameter validation failures
+    console.warn('Unhandled error in sendMessage, restoring message for retry:', error)
+    newMessage.value = originalMessage
   }
 }
 </script>

@@ -121,10 +121,8 @@ export const useChatNavigationStore = defineStore('chatNavigation', () => {
     // Only preserve selection if we're in branching mode
     if (getIsBranchingMode(treeStructure) && selectedNodeUuid.value) {
       preservedSelectionUuid.value = selectedNodeUuid.value
-      console.log('Preserving selection for streaming:', selectedNodeUuid.value)
     } else {
       preservedSelectionUuid.value = null
-      console.log('Not preserving selection - not in branching mode')
     }
   }
 
@@ -134,39 +132,44 @@ export const useChatNavigationStore = defineStore('chatNavigation', () => {
 
   function restorePreservedSelection(treeStructure: TreeNode | null, preferNewBranch: boolean = false): boolean {
     if (!preservedSelectionUuid.value) {
-      console.log('No preserved selection to restore')
       return false
     }
 
     // Check if the preserved node still exists in the tree
     const preservedNode = findNodeInTree(preservedSelectionUuid.value, treeStructure)
     if (!preservedNode) {
-      console.log('Preserved node no longer exists:', preservedSelectionUuid.value)
       preservedSelectionUuid.value = null
       return false
     }
 
     // If preferNewBranch is true, check if a new branch was created from the preserved node
     if (preferNewBranch && treeStructure) {
-      const latestLeaf = findLatestLeafNode(treeStructure)
-      if (latestLeaf && latestLeaf.role === 'assistant') {
-        // Check if this is a newly created branch from the preserved node
-        const parentPath = buildPathToNode(latestLeaf.uuid, treeStructure)
-        const preservedInPath = parentPath.some(node => node.uuid === preservedSelectionUuid.value)
-        
-        if (preservedInPath) {
-          // This is a new branch created from our preserved selection
-          // Select the new assistant response instead
-          console.log('Selecting newly created branch:', latestLeaf.uuid)
-          selectNode(latestLeaf.uuid, treeStructure)
-          preservedSelectionUuid.value = null
-          return true
+      // Look for new branches created from the preserved node
+      // Find the most recent user message child of the preserved node
+      let latestUserChild: TreeNode | null = null
+      let latestUserUuid = ''
+      
+      for (const child of preservedNode.children) {
+        if (child.role === 'user' && child.uuid > latestUserUuid) {
+          latestUserUuid = child.uuid
+          latestUserChild = child
+        }
+      }
+      
+      // If we found a user message, look for its assistant response
+      if (latestUserChild) {
+        for (const child of latestUserChild.children) {
+          if (child.role === 'assistant') {
+            // This is the new assistant response in the branch
+            selectNode(child.uuid, treeStructure)
+            preservedSelectionUuid.value = null
+            return true
+          }
         }
       }
     }
 
     // Restore to the original preserved selection
-    console.log('Restoring preserved selection:', preservedSelectionUuid.value)
     selectNode(preservedSelectionUuid.value, treeStructure)
     preservedSelectionUuid.value = null
     return true
