@@ -18,6 +18,27 @@ vi.mock('../../api/chats', () => ({
   }
 }))
 
+/**
+ * CRITICAL BEHAVIOR TEST: Branch Selection After Streaming
+ * 
+ * This test suite verifies the CORRECT behavior for node selection after branching and streaming.
+ * This functionality has been broken multiple times during refactoring, so these tests serve as
+ * the definitive specification for the expected behavior.
+ * 
+ * EXPECTED BEHAVIOR:
+ * 1. User selects a node in the middle of conversation (not the latest leaf)
+ * 2. User sends a message (creates a new branch from that node)
+ * 3. AI responds to the new branch
+ * 4. System should automatically select the NEW AI RESPONSE, not:
+ *    - The original selected node (branch origin)
+ *    - The deepest node in the entire tree
+ *    - Any other node
+ * 
+ * WHY THIS MATTERS:
+ * - Users expect to see the new AI response after branching
+ * - Selecting the wrong node confuses the conversation flow
+ * - This is core UX functionality for the branching feature
+ */
 describe('Chats Store - New Branch Selection', () => {
   let chatsStore: ReturnType<typeof useChatDetailStore>
   let listStore: ReturnType<typeof useChatListStore>
@@ -36,6 +57,16 @@ describe('Chats Store - New Branch Selection', () => {
   })
 
   describe('New Branch Selection After Streaming', () => {
+    /**
+     * CORE TEST: Verify that after branching and streaming, the NEW AI response is selected
+     * 
+     * SCENARIO:
+     * - User has a conversation: System -> User1 -> AI1 -> User2 -> AI2
+     * - User clicks on AI1 (middle of conversation) to branch from there
+     * - User sends a new message, creating: AI1 -> UserNewBranch -> AINewBranch
+     * - Expected: AINewBranch should be automatically selected
+     * - Not expected: AI1 (original selection) or AI2 (deepest node) should NOT be selected
+     */
     it('should select the newly created AI response after branching, not the original selected node', async () => {
       // Create a simple tree structure for branching
       const originalTree: TreeNode = {
@@ -85,20 +116,24 @@ describe('Chats Store - New Branch Selection', () => {
         }
       })
 
-      // User selects assistant-1 for branching (not the latest leaf)
+      // STEP 1: User selects assistant-1 for branching (not the latest leaf)
+      // This simulates clicking on a message in the middle of the conversation
       chatsStore.selectNode('assistant-1')
       expect(navStore.selectedNodeUuid).toBe('assistant-1')
       
-      // Check if we're in branching mode - assistant-1 is not the latest leaf (assistant-2 is)
+      // STEP 2: Verify we're in branching mode
+      // assistant-1 is not the latest leaf (assistant-2 is), so we should be in branching mode
       const latestLeaf = chatsStore.findLatestLeafNode()
       expect(latestLeaf?.uuid).toBe('assistant-2')
       expect(navStore.getIsBranchingMode(listStore.treeStructure)).toBe(true)
 
-      // Preserve selection for streaming (simulating the user sending a message)
+      // STEP 3: Preserve selection for streaming (simulates user sending a message)
+      // This saves the branch origin point before the tree gets updated
       chatsStore.preserveSelectionForStreaming()
       expect(chatsStore.getPreservedSelection()).toBe('assistant-1')
 
-      // Simulate new branch creation after streaming
+      // STEP 4: Simulate new branch creation after streaming
+      // This represents the tree structure after the API responds with the new branch
       const updatedTree: TreeNode = {
         uuid: 'root',
         role: 'system',
@@ -135,8 +170,8 @@ describe('Chats Store - New Branch Selection', () => {
                     content: 'New branch question',
                     children: [
                       {
-                        uuid: 'assistant-new-branch', // This should be selected
-                        role: 'assistant',
+                        uuid: 'assistant-new-branch', // ← THIS IS THE CRITICAL NODE
+                        role: 'assistant',            // This should be auto-selected after branching
                         content: 'New branch AI response',
                         children: []
                       }
@@ -149,6 +184,7 @@ describe('Chats Store - New Branch Selection', () => {
         ]
       }
 
+      // STEP 5: Update the store with the new tree structure (simulates API response)
       listStore.$patch({
         chatData: {
           ...listStore.chatData!,
@@ -156,22 +192,32 @@ describe('Chats Store - New Branch Selection', () => {
         }
       })
 
-      // Clear selection to simulate chat reload
+      // STEP 6: Clear selection to simulate chat reload
       chatsStore.clearSelection()
 
-      // Restore with preference for new branch
+      // STEP 7: Restore with preference for new branch (this is the critical logic)
       const wasRestored = chatsStore.restorePreservedSelection(true)
 
-      // Should have selected the NEW AI response, not the original node
+      // STEP 8: VERIFY CORRECT BEHAVIOR
+      // The system should have automatically selected the NEW AI response
       expect(wasRestored).toBe(true)
-      expect(navStore.selectedNodeUuid).toBe('assistant-new-branch')
+      expect(navStore.selectedNodeUuid).toBe('assistant-new-branch') // ← CRITICAL ASSERTION
       
-      // Verify it's in the path from the preserved selection
+      // STEP 9: Verify the path contains the original branch point
+      // This ensures we selected a node that's actually descended from our branch origin
       const path = navStore.currentPath
       const hasPreservedInPath = path.some(node => node.uuid === 'assistant-1')
       expect(hasPreservedInPath).toBe(true)
     })
 
+    /**
+     * FALLBACK TEST: When no new branch is actually created, fall back to original selection
+     * 
+     * SCENARIO:
+     * - User selects a node for branching
+     * - For some reason, no new branch gets created (network error, etc.)
+     * - Expected: System should fall back to the original selected node
+     */
     it('should fall back to original selection when no new branch is created', async () => {
       // Tree where we have multiple leaf nodes at different depths
       const simpleTree: TreeNode = {
@@ -238,6 +284,15 @@ describe('Chats Store - New Branch Selection', () => {
       expect(navStore.selectedNodeUuid).toBe('assistant-1')
     })
 
+    /**
+     * INTEGRATION TEST: Verify the complete flow works with preferNewBranch=true
+     * 
+     * This test simulates the actual flow that happens in the application:
+     * - User branches from a middle node
+     * - System preserves the selection
+     * - API creates a new branch
+     * - System automatically selects the new AI response
+     */
     it('should work correctly when called with preferNewBranch=true', async () => {
       // This test simulates the real flow
       const mockTree: TreeNode = {
@@ -296,7 +351,7 @@ describe('Chats Store - New Branch Selection', () => {
       const wasRestored = chatsStore.restorePreservedSelection(true)
 
       expect(wasRestored).toBe(true)
-      expect(navStore.selectedNodeUuid).toBe('assistant-branch') // New AI response
+      expect(navStore.selectedNodeUuid).toBe('assistant-branch') // New AI response should be selected
     })
   })
 })

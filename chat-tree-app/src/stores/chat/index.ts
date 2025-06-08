@@ -43,10 +43,7 @@ export const useChatDetailStore = () => {
 
     const response = await listStore.sendMessage(content, modelId, parentMessageUuid)
     
-    // Auto-select after successful send
-    if (response) {
-      autoSelectLatestNode()
-    }
+    // Note: autoSelectLatestNode is handled by loadCompleteChat which is called by sendMessage
     
     return response
   }

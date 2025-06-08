@@ -144,28 +144,33 @@ export const useChatNavigationStore = defineStore('chatNavigation', () => {
 
     // If preferNewBranch is true, check if a new branch was created from the preserved node
     if (preferNewBranch && treeStructure) {
-      // Look for new branches created from the preserved node
-      // Find the most recent user message child of the preserved node
-      let latestUserChild: TreeNode | null = null
-      let latestUserUuid = ''
+      // Look for the most recent assistant node that is a descendant of the preserved node
+      let newestBranchAssistant: TreeNode | null = null
+      let newestAssistantUuid = ''
       
-      for (const child of preservedNode.children) {
-        if (child.role === 'user' && child.uuid > latestUserUuid) {
-          latestUserUuid = child.uuid
-          latestUserChild = child
+      function findNewestAssistantInSubtree(node: TreeNode) {
+        // Check if this node is an assistant and newer than what we've found
+        if (node.role === 'assistant' && node.uuid > newestAssistantUuid) {
+          newestAssistantUuid = node.uuid
+          newestBranchAssistant = node
+        }
+        
+        // Recursively check all children
+        for (const child of node.children) {
+          findNewestAssistantInSubtree(child)
         }
       }
       
-      // If we found a user message, look for its assistant response
-      if (latestUserChild) {
-        for (const child of latestUserChild.children) {
-          if (child.role === 'assistant') {
-            // This is the new assistant response in the branch
-            selectNode(child.uuid, treeStructure)
-            preservedSelectionUuid.value = null
-            return true
-          }
-        }
+      // Start search from the preserved node's children (new branches)
+      for (const child of preservedNode.children) {
+        findNewestAssistantInSubtree(child)
+      }
+      
+      // If we found a new assistant response in the preserved node's subtree, select it
+      if (newestBranchAssistant && newestBranchAssistant.uuid !== preservedSelectionUuid.value) {
+        selectNode(newestBranchAssistant.uuid, treeStructure)
+        preservedSelectionUuid.value = null
+        return true
       }
     }
 
