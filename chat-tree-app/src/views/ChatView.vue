@@ -29,87 +29,13 @@
       @clear-selection="chatsStore.clearSelection"
     >
       <template #input>
-        <!-- Compact Message Input -->
-        <div class="p-4 bg-gray-50 border-t border-gray-200">
-          <form @submit.prevent="handleSendMessage" data-test="message-form">
-            <div class="flex space-x-2">
-              <div class="flex-1">
-                <textarea
-                  id="message"
-                  v-model="newMessage"
-                  data-test="message-input"
-                  placeholder="Type your message here..."
-                  rows="3"
-                  class="w-full resize-none border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  :disabled="chatsStore.isLoading"
-                  @keydown.meta.enter="handleSendMessage"
-                  @keydown.ctrl.enter="handleSendMessage"
-                ></textarea>
-              </div>
-              <div class="flex flex-col justify-end">
-                <button
-                  type="submit"
-                  data-test="submit-button"
-                  :disabled="!newMessage.trim() || chatsStore.isLoading"
-                  :class="[
-                    'px-3 py-2 rounded-md font-medium transition-colors text-sm',
-                    chatsStore.isBranchingMode 
-                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                      : 'bg-indigo-600 hover:bg-indigo-700 text-white',
-                    (!newMessage.trim() || chatsStore.isLoading) && 'bg-gray-400 cursor-not-allowed'
-                  ]"
-                >
-                  <span v-if="chatsStore.isLoading" class="flex items-center space-x-1">
-                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>...</span>
-                  </span>
-                  <span v-else-if="chatsStore.isBranchingMode">
-                    🌿 Branch
-                  </span>
-                  <span v-else>
-                    📤 Send
-                  </span>
-                </button>
-              </div>
-            </div>
-            <div class="flex justify-between items-center mt-2">
-              <div class="flex items-center space-x-4">
-                <div class="text-xs text-gray-500">
-                  ⌘+Enter or Ctrl+Enter to send
-                </div>
-                <div class="flex items-center space-x-2">
-                  <label class="text-xs text-gray-600">Streaming:</label>
-                  <button
-                    type="button"
-                    @click="useStreaming = !useStreaming"
-                    :class="[
-                      'relative inline-flex h-4 w-8 items-center rounded-full transition-colors',
-                      useStreaming ? 'bg-indigo-600' : 'bg-gray-300'
-                    ]"
-                  >
-                    <span
-                      :class="[
-                        'inline-block h-3 w-3 transform rounded-full bg-white transition',
-                        useStreaming ? 'translate-x-4' : 'translate-x-0.5'
-                      ]"
-                    />
-                  </button>
-                  <span class="text-xs" :class="useStreaming ? 'text-indigo-600' : 'text-gray-500'">
-                    {{ useStreaming ? 'SSE' : 'REST' }}
-                  </span>
-                </div>
-              </div>
-              <div class="text-xs" 
-                   :class="chatsStore.isBranchingMode ? 'text-orange-600' : 'text-green-600'">
-                <span v-if="chatsStore.isBranchingMode">🌿 Creating new branch</span>
-                <span v-else>✅ Continuing conversation</span>
-              </div>
-            </div>
-          </form>
-        </div>
+        <MessageInput
+          v-model="newMessage"
+          v-model:use-streaming="useStreaming"
+          :is-loading="chatsStore.isLoading"
+          :is-branching-mode="chatsStore.isBranchingMode"
+          @submit="handleSendMessage"
+        />
       </template>
     </ChatPanelLayout>
   </div>
@@ -122,6 +48,7 @@ import { useChatsStore } from '../stores/chats'
 import { useStreamingMessage } from '../composables/useStreamingMessage'
 import ChatControls from '../components/ChatControls.vue'
 import ChatPanelLayout from '../components/ChatPanelLayout.vue'
+import MessageInput from '../components/MessageInput.vue'
 import { getBranchConversationThread } from '../utils/treeHelpers'
 import type { HistoryMessage, ModelDto } from '../types/api'
 
@@ -218,22 +145,25 @@ const handleModelSelected = (model: ModelDto | null) => {
   }
 }
 
-const handleSendMessage = async () => {
-  if (!newMessage.value.trim() || !chatUuid.value) {
+const handleSendMessage = async (message: string) => {
+  if (!message.trim() || !chatUuid.value) {
     console.log('Cannot send message - missing content or chatUuid:', {
-      hasContent: !!newMessage.value.trim(),
+      hasContent: !!message.trim(),
       chatUuid: chatUuid.value
     })
     return
   }
 
   console.log('Sending message:', {
-    content: newMessage.value.trim(),
+    content: message.trim(),
     chatUuid: chatUuid.value,
     isBranchingMode: chatsStore.isBranchingMode,
     selectedNode: chatsStore.selectedNodeUuid,
     useStreaming: useStreaming.value
   })
+
+  // Clear the message input immediately after getting the message
+  newMessage.value = ''
 
   try {
     if (useStreaming.value) {
@@ -243,22 +173,19 @@ const handleSendMessage = async () => {
       // Use SSE streaming
       await sendStreamingMessage(
         chatUuid.value,
-        newMessage.value.trim(),
+        message.trim(),
         chatsStore.selectedNodeUuid || undefined,
         selectedModelId.value || undefined
       )
-      newMessage.value = ''
       
       // Handle completion when streaming finishes
       // This would typically be handled in a watcher or event handler
     } else {
       // Use traditional API
-      const response = await chatsStore.sendMessage(newMessage.value.trim(), selectedModelId.value || undefined)
+      const response = await chatsStore.sendMessage(message.trim(), selectedModelId.value || undefined)
       console.log('Message sent successfully:', response)
       
       if (response) {
-        newMessage.value = ''
-        
         // Show appropriate feedback based on mode
         if (chatsStore.isBranchingMode) {
           console.log('🌿 New branch created! You can continue this conversation or select another node to branch again.')
@@ -275,6 +202,8 @@ const handleSendMessage = async () => {
     console.error('Failed to send message:', error)
     // Show error to user
     chatsStore.error = error instanceof Error ? error.message : 'Failed to send message'
+    // Restore the message if there was an error
+    newMessage.value = message
   }
 }
 

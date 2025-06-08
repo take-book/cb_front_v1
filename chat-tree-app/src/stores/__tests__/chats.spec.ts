@@ -110,7 +110,7 @@ describe('Chats Store (Updated)', () => {
       
       await store.sendMessage('How are you?')
       
-      expect(chatApi.sendMessage).toHaveBeenCalledWith('test-chat', 'How are you?', null)
+      expect(chatApi.sendMessage).toHaveBeenCalledWith('test-chat', 'How are you?', null, undefined)
       expect(chatApi.getCompleteChat).toHaveBeenCalledTimes(2) // Once for load, once for reload
     })
 
@@ -132,7 +132,7 @@ describe('Chats Store (Updated)', () => {
       const store = useChatsStore()
       const result = await store.createNewChat('Hello, world!')
       
-      expect(chatApi.createChat).toHaveBeenCalledWith('Hello, world!')
+      expect(chatApi.createChat).toHaveBeenCalledWith('Hello, world!', undefined)
       expect(result).toBe('new-chat')
     })
 
@@ -144,7 +144,7 @@ describe('Chats Store (Updated)', () => {
       const store = useChatsStore()
       const result = await store.createNewChat()
       
-      expect(chatApi.createChat).toHaveBeenCalledWith(undefined)
+      expect(chatApi.createChat).toHaveBeenCalledWith(undefined, undefined)
       expect(result).toBe('new-chat')
     })
   })

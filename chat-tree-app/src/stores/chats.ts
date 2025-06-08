@@ -387,25 +387,28 @@ export const useChatsStore = defineStore('chats', () => {
       return node
     }
     
-    // Find the leaf with the latest timestamp (approximate by traversing deepest path)
-    let deepestLeaf: TreeNode | null = null
-    let maxDepth = -1
+    // Find the leaf with the latest UUID (as proxy for creation time)
+    // UUIDs in this system are assumed to be lexicographically ordered by creation time
+    let latestLeaf: TreeNode | null = null
+    let latestUuid = ''
     
-    function traverse(currentNode: TreeNode, depth: number) {
+    function traverse(currentNode: TreeNode) {
       if (currentNode.children.length === 0) {
-        if (depth > maxDepth) {
-          maxDepth = depth
-          deepestLeaf = currentNode
+        // This is a leaf node
+        if (currentNode.uuid > latestUuid) {
+          latestUuid = currentNode.uuid
+          latestLeaf = currentNode
         }
       } else {
+        // Recursively traverse children
         for (const child of currentNode.children) {
-          traverse(child, depth + 1)
+          traverse(child)
         }
       }
     }
     
-    traverse(node, 0)
-    return deepestLeaf
+    traverse(node)
+    return latestLeaf
   }
 
   // Auto-select the latest node when loading a chat

@@ -46,6 +46,8 @@ export interface UpdateChatRequest {
 }
 
 // Message Types
+export type MessageRole = 'user' | 'assistant' | 'system'
+
 export interface MessageRequest {
   content: string
   parent_message_uuid?: string | null
@@ -59,7 +61,7 @@ export interface MessageResponse {
 
 export interface HistoryMessage {
   message_uuid: string
-  role: string
+  role: MessageRole
   content: string
 }
 
@@ -74,7 +76,7 @@ export interface EditMessageRequest {
 // Tree Structure Types
 export interface TreeNode {
   uuid: string
-  role: string
+  role: MessageRole
   content: string
   children: TreeNode[]
 }
@@ -86,18 +88,26 @@ export interface TreeStructureResponse {
 }
 
 // Complete Chat Data Type (New in updated API)
+export interface ChatMetadata {
+  created_at: string
+  updated_at: string
+  message_count: number
+  owner_id: string
+  [key: string]: any
+}
+
 export interface CompleteChatDataResponse {
   chat_uuid: string
   title: string
   system_prompt: string | null
   messages: HistoryMessage[]
   tree_structure: TreeNode
-  metadata: Record<string, any>
+  metadata: ChatMetadata
 }
 
 // Pagination Types
-export interface PaginatedResponse {
-  items: Record<string, any>[]
+export interface PaginatedResponse<T = any> {
+  items: T[]
   total: number
   page: number
   limit: number
@@ -166,26 +176,65 @@ export interface ChatListItem {
 }
 
 // Type guards
-export function isTreeNode(obj: any): obj is TreeNode {
+export function isMessageRole(role: string): role is MessageRole {
+  return ['user', 'assistant', 'system'].includes(role)
+}
+
+export function isTreeNode(obj: unknown): obj is TreeNode {
   return (
     typeof obj === 'object' &&
     obj !== null &&
     'uuid' in obj &&
+    typeof (obj as any).uuid === 'string' &&
     'role' in obj &&
+    isMessageRole((obj as any).role) &&
     'content' in obj &&
+    typeof (obj as any).content === 'string' &&
     'children' in obj &&
-    Array.isArray(obj.children)
+    Array.isArray((obj as any).children) &&
+    (obj as any).children.every((child: unknown) => isTreeNode(child))
   )
 }
 
-export function isHistoryMessage(obj: any): obj is HistoryMessage {
+export function isHistoryMessage(obj: unknown): obj is HistoryMessage {
   return (
     typeof obj === 'object' &&
     obj !== null &&
     'message_uuid' in obj &&
+    typeof (obj as any).message_uuid === 'string' &&
     'role' in obj &&
-    'content' in obj
+    isMessageRole((obj as any).role) &&
+    'content' in obj &&
+    typeof (obj as any).content === 'string'
   )
+}
+
+export function isPaginatedResponse<T>(
+  obj: unknown,
+  itemValidator?: (item: unknown) => item is T
+): obj is PaginatedResponse<T> {
+  if (
+    typeof obj !== 'object' ||
+    obj === null ||
+    !('items' in obj) ||
+    !Array.isArray((obj as any).items) ||
+    !('total' in obj) ||
+    typeof (obj as any).total !== 'number' ||
+    !('page' in obj) ||
+    typeof (obj as any).page !== 'number' ||
+    !('limit' in obj) ||
+    typeof (obj as any).limit !== 'number' ||
+    !('pages' in obj) ||
+    typeof (obj as any).pages !== 'number'
+  ) {
+    return false
+  }
+
+  if (itemValidator) {
+    return (obj as any).items.every(itemValidator)
+  }
+
+  return true
 }
 
 // Model Types
@@ -337,13 +386,25 @@ export interface HourlyUsageStats {
   token_count: number
 }
 
+export interface TopCategoryStats {
+  category: string
+  count: number
+  percentage: number
+}
+
+export interface CostTrend {
+  period: string
+  cost: number
+  change_percentage: number
+}
+
 export interface AnalyticsResponse {
   overview: UsageStatsResponse
   model_breakdown: ModelUsageStats[]
   daily_usage: DailyUsageStats[]
   hourly_pattern: HourlyUsageStats[]
-  top_categories: Record<string, any>[]
-  cost_trends: Record<string, any>[]
+  top_categories: TopCategoryStats[]
+  cost_trends: CostTrend[]
 }
 
 export interface AnalyticsParams {
