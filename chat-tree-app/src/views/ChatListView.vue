@@ -73,6 +73,25 @@
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">No chats yet</h3>
         <p class="mt-1 text-sm text-gray-500">Start a new conversation to get started.</p>
+        
+        <!-- Debug info in development -->
+        <div v-if="isDev" class="mt-4 p-4 bg-gray-100 rounded-md text-left">
+          <h4 class="font-medium text-gray-900 mb-2">Debug Info:</h4>
+          <div class="text-sm text-gray-600 space-y-1">
+            <div>Auth Status: {{ authStore.isAuthenticated ? 'Authenticated' : 'Not Authenticated' }}</div>
+            <div>Has Access Token: {{ !!localStorage.getItem('access_token') }}</div>
+            <div>Store Loading: {{ chatsStore.isLoading }}</div>
+            <div>Store Error: {{ chatsStore.error || 'None' }}</div>
+            <div>Total Chats: {{ chatsStore.totalChats }}</div>
+            <div>API Base URL: {{ apiBaseUrl }}</div>
+          </div>
+          <button 
+            @click="debugRefetch" 
+            class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+          >
+            Force Refetch
+          </button>
+        </div>
       </div>
 
       <!-- Chat List -->
@@ -147,9 +166,36 @@ const searchQuery = ref('')
 const selectedModelId = ref<string | null>(null)
 let searchTimeout: number | undefined
 
-onMounted(async () => {
+// Development debug info
+const isDev = import.meta.env.DEV
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+// Debug function to force refetch
+const debugRefetch = async () => {
+  console.log('Debug: Force refetching chats...')
   try {
     await chatsStore.fetchRecentChats()
+    console.log('Debug: Refetch completed')
+  } catch (error) {
+    console.error('Debug: Refetch failed:', error)
+  }
+}
+
+onMounted(async () => {
+  try {
+    // Ensure authentication is properly initialized before fetching chats
+    if (!authStore.isAuthenticated && localStorage.getItem('access_token')) {
+      console.log('Initializing auth from storage before fetching chats...')
+      await authStore.initializeFromStorage()
+    }
+    
+    // Only fetch chats if authenticated
+    if (authStore.isAuthenticated) {
+      console.log('Fetching recent chats...')
+      await chatsStore.fetchRecentChats()
+    } else {
+      console.warn('User not authenticated, skipping chat fetch')
+    }
   } catch (error) {
     console.error('Failed to load chats:', error)
     // Show a user-friendly error message

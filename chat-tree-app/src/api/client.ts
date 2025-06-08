@@ -2,7 +2,7 @@ import axios, { type AxiosInstance } from 'axios'
 import { ErrorHandler, logError } from '../utils/errorHandler'
 import { ERROR_CODES } from '../types/errors'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 // Callback for handling auth failures (to be set by the app)
 let onAuthFailure: (() => void) | null = null
@@ -30,17 +30,52 @@ apiClient.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
     }
+    
+    // Enhanced logging for debugging
+    if (import.meta.env.DEV) {
+      console.log('API Request:', {
+        method: config.method?.toUpperCase(),
+        url: config.url,
+        baseURL: config.baseURL,
+        fullURL: `${config.baseURL}${config.url}`,
+        hasAuth: !!accessToken,
+        headers: config.headers
+      })
+    }
+    
     return config
   },
   (error) => {
+    if (import.meta.env.DEV) {
+      console.error('API Request Error:', error)
+    }
     return Promise.reject(error)
   }
 )
 
 // Response interceptor with standardized error handling
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Enhanced response logging for debugging
+    if (import.meta.env.DEV) {
+      console.log('API Response:', {
+        status: response.status,
+        url: response.config.url,
+        data: response.data
+      })
+    }
+    return response
+  },
   async (error) => {
+    if (import.meta.env.DEV) {
+      console.error('API Response Error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        data: error.response?.data,
+        error: error.message
+      })
+    }
     const originalRequest = error.config
 
     // Handle 401 errors with token refresh

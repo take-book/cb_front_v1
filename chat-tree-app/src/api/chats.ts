@@ -36,22 +36,6 @@ export const chatApi = {
   async getCompleteChat(chatUuid: string): Promise<CompleteChatDataResponse> {
     const response = await apiClient.get(`/api/v1/chats/${chatUuid}/complete`)
     
-    // Debug: Log raw API response
-    if (import.meta.env.DEV) {
-      console.log('Raw API response for getCompleteChat:', {
-        chatUuid,
-        status: response.status,
-        data: response.data,
-        treeStructure: response.data.tree_structure,
-        treeRoot: response.data.tree_structure ? {
-          uuid: response.data.tree_structure.uuid,
-          role: response.data.tree_structure.role,
-          content: response.data.tree_structure.content?.slice(0, 100),
-          contentLength: response.data.tree_structure.content?.length,
-          childrenCount: response.data.tree_structure.children?.length
-        } : null
-      })
-    }
     
     return response.data
   },
@@ -88,7 +72,9 @@ export const chatApi = {
 
   // Get recent chats
   async getRecentChats(params?: RecentChatsParams): Promise<PaginatedResponse> {
+    console.log('chatApi.getRecentChats called with params:', params)
     const response = await apiClient.get('/api/v1/chats/recent', { params })
+    console.log('chatApi.getRecentChats response:', response.data)
     return response.data
   },
 

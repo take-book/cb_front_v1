@@ -150,32 +150,48 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const initializeFromStorage = async () => {
+    console.log('Auth: initializeFromStorage called')
     const storedAccessToken = localStorage.getItem('access_token')
     const storedRefreshToken = localStorage.getItem('refresh_token')
+    console.log('Auth: Found tokens in storage:', { 
+      hasAccessToken: !!storedAccessToken, 
+      hasRefreshToken: !!storedRefreshToken 
+    })
 
     if (storedAccessToken) {
       accessToken.value = storedAccessToken
       refreshToken.value = storedRefreshToken
       
+      console.log('Auth: Setting axios headers...')
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedAccessToken}`
       
       try {
+        console.log('Auth: Fetching user info...')
         await fetchUserInfo()
+        console.log('Auth: User info fetched successfully. User:', user.value)
       } catch (error) {
+        console.log('Auth: Failed to fetch user info, token might be expired')
         // Token might be expired, try to refresh
         if (storedRefreshToken) {
+          console.log('Auth: Attempting to refresh token...')
           const refreshed = await refreshAccessToken()
           if (refreshed) {
             try {
+              console.log('Auth: Retry fetching user info after refresh...')
               await fetchUserInfo()
+              console.log('Auth: User info fetched successfully after refresh')
             } catch (error) {
+              console.log('Auth: Failed to fetch user info even after refresh, logging out')
               logout()
             }
           }
         } else {
+          console.log('Auth: No refresh token available, logging out')
           logout()
         }
       }
+    } else {
+      console.log('Auth: No access token found in storage')
     }
   }
 
