@@ -93,7 +93,7 @@
               
               <div
                 v-show="showUserMenu"
-                class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50"
+                class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black/5 z-50"
                 role="menu"
                 aria-orientation="vertical"
                 aria-labelledby="user-menu"
@@ -135,9 +135,9 @@
         <RouterLink
           to="/chats"
           :class="[
-            'block pl-3 pr-4 py-2 border-l-4 text-base font-medium',
+            'block pl-3 pr-4 py-3 border-l-4 text-base font-medium transition-all duration-200',
             isActiveRoute('/chats')
-              ? 'bg-blue-50 border-blue-500 text-blue-700'
+              ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300'
           ]"
           @click="showMobileMenu = false"
@@ -148,9 +148,9 @@
         <RouterLink
           to="/templates"
           :class="[
-            'block pl-3 pr-4 py-2 border-l-4 text-base font-medium',
+            'block pl-3 pr-4 py-3 border-l-4 text-base font-medium transition-all duration-200',
             isActiveRoute('/templates')
-              ? 'bg-blue-50 border-blue-500 text-blue-700'
+              ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300'
           ]"
           @click="showMobileMenu = false"
@@ -161,9 +161,9 @@
         <RouterLink
           to="/presets"
           :class="[
-            'block pl-3 pr-4 py-2 border-l-4 text-base font-medium',
+            'block pl-3 pr-4 py-3 border-l-4 text-base font-medium transition-all duration-200',
             isActiveRoute('/presets')
-              ? 'bg-blue-50 border-blue-500 text-blue-700'
+              ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300'
           ]"
           @click="showMobileMenu = false"
@@ -174,9 +174,9 @@
         <RouterLink
           to="/analytics"
           :class="[
-            'block pl-3 pr-4 py-2 border-l-4 text-base font-medium',
+            'block pl-3 pr-4 py-3 border-l-4 text-base font-medium transition-all duration-200',
             isActiveRoute('/analytics')
-              ? 'bg-blue-50 border-blue-500 text-blue-700'
+              ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300'
           ]"
           @click="showMobileMenu = false"
@@ -188,20 +188,20 @@
       <div v-if="authStore.isAuthenticated" class="pt-4 pb-3 border-t border-gray-200">
         <div class="flex items-center px-4">
           <div class="flex-shrink-0">
-            <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
+            <div class="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg">
               <span class="text-sm font-medium text-white">
                 {{ userInitials }}
               </span>
             </div>
           </div>
           <div class="ml-3">
-            <div class="text-base font-medium text-gray-800">{{ authStore.user?.username || 'User' }}</div>
+            <div class="text-base font-semibold text-gray-900">{{ authStore.user?.username || 'User' }}</div>
           </div>
         </div>
         <div class="mt-3 space-y-1">
           <button
             @click="handleLogout"
-            class="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+            class="block w-full text-left px-4 py-3 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-all duration-200 rounded-lg mx-2"
           >
             Sign out
           </button>

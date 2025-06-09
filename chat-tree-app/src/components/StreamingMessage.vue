@@ -1,32 +1,37 @@
 <template>
   <div 
     v-if="message"
-    class="streaming-message max-w-[80%] rounded-lg px-3 py-2 bg-gray-100 text-gray-900 border border-gray-200"
+    class="message-bubble-assistant animate-fade-in-up"
   >
     <!-- Message Role Header -->
-    <div class="text-xs font-medium mb-1 opacity-75 flex items-center justify-between">
-      <span>AI</span>
-      <div class="flex items-center space-x-1">
-        <div v-if="!message.isComplete" class="typing-indicator">
-          <span class="dot"></span>
-          <span class="dot"></span>
-          <span class="dot"></span>
+    <div class="text-xs font-medium mb-2 flex items-center justify-between">
+      <span class="text-gray-600">🤖 AI</span>
+      <div class="flex items-center space-x-2">
+        <div v-if="!message.isComplete" class="state-badge state-streaming">
+          <div class="typing-indicator mr-2">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          Typing...
         </div>
-        <span v-else class="text-green-600">✓</span>
+        <div v-else class="state-badge state-continuing">
+          ✓ Complete
+        </div>
       </div>
     </div>
     
     <!-- Streaming Content -->
-    <div class="text-sm text-gray-900">
+    <div class="text-sm leading-relaxed">
       <MarkdownContent 
         :content="message.content" 
         class="assistant-message"
       />
       <span 
         v-if="!message.isComplete" 
-        class="streaming-cursor animate-pulse"
+        class="streaming-cursor animate-pulse ml-1"
       >
-        |
+        ▊
       </span>
     </div>
   </div>
@@ -54,7 +59,7 @@ defineProps<Props>()
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background-color: #6b7280;
+  background-color: #4f46e5;
   animation: typing 1.4s infinite ease-in-out;
 }
 
@@ -78,8 +83,9 @@ defineProps<Props>()
 }
 
 .streaming-cursor {
-  color: #3b82f6;
+  color: #4f46e5;
   font-weight: bold;
+  font-size: 16px;
 }
 
 /* Assistant message markdown styling */

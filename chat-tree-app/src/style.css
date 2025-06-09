@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/* Remove custom theme for now - will use standard Tailwind colors */
+
+/* Keep simple keyframe animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Base styles */
 @layer base {
   html, body {
@@ -13,11 +38,150 @@
 
 /* Custom component styles */
 @layer components {
-  .btn-primary {
-    @apply px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500;
+  /* Modern glass panel effects */
+  .glass-panel {
+    @apply bg-white/90 backdrop-blur-sm border border-white/20 shadow-xl;
   }
   
+  .elevated-card {
+    @apply bg-white rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300;
+  }
+  
+  /* Enhanced button system */
+  .btn-primary {
+    @apply px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg;
+    @apply hover:bg-indigo-700 hover:shadow-xl transition-all duration-200;
+    @apply focus:outline-none focus:ring-4 focus:ring-indigo-200;
+    @apply disabled:bg-gray-400 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-medium;
+    @apply hover:bg-gray-50 hover:border-gray-300 transition-all duration-200;
+    @apply focus:outline-none focus:ring-4 focus:ring-gray-100;
+  }
+  
+  .btn-ghost {
+    @apply px-4 py-2 text-gray-600 rounded-lg transition-all duration-200;
+    @apply hover:text-gray-900 hover:bg-gray-100;
+  }
+  
+  /* Modern card styles */
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+    @apply bg-white rounded-xl shadow-lg border border-gray-100 p-6;
+    @apply hover:shadow-xl transition-all duration-300;
+  }
+  
+  /* Chat message bubbles */
+  .message-bubble-user {
+    @apply bg-blue-600 text-white rounded-3xl px-4 py-3 shadow-lg;
+    @apply max-w-[85%];
+  }
+  
+  .message-bubble-assistant {
+    @apply bg-white border-2 border-gray-100 text-gray-900;
+    @apply rounded-3xl px-4 py-3 shadow-lg max-w-[85%];
+  }
+  
+  .message-bubble-system {
+    @apply bg-yellow-100 text-orange-900 rounded-2xl shadow-md;
+    @apply max-w-[75%] px-4 py-2 mx-auto text-center text-sm;
+  }
+  
+  /* Chat tree node styles */
+  .tree-node-modern {
+    @apply drop-shadow-md hover:drop-shadow-lg transition-all duration-300 cursor-pointer;
+  }
+  
+  .tree-node-user {
+    @apply bg-blue-50 border-2 border-indigo-200 rounded-lg;
+    @apply hover:border-indigo-400 transition-all duration-200;
+  }
+  
+  .tree-node-assistant {
+    @apply bg-emerald-50 border-2 border-green-200 rounded-lg;
+    @apply hover:border-green-400 transition-all duration-200;
+  }
+  
+  .tree-node-selected {
+    @apply ring-4 ring-indigo-300/50;
+  }
+  
+  /* Navigation styles */
+  .navbar-modern {
+    @apply bg-white border-b border-gray-200 shadow-sm;
+    @apply sticky top-0 z-50;
+  }
+  
+  .nav-link {
+    @apply relative px-4 py-2 rounded-lg text-gray-600;
+    @apply hover:text-gray-900 hover:bg-gray-100 transition-all duration-200;
+  }
+  
+  .nav-link-active {
+    @apply text-indigo-600 bg-indigo-50;
+  }
+  
+  .nav-link-active::after {
+    content: '';
+    @apply absolute bottom-0 left-1/2 w-1 h-1;
+    @apply bg-indigo-600 rounded-full;
+    transform: translateX(-50%);
+  }
+  
+  /* Form elements */
+  .input-modern {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50;
+    @apply focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100;
+    @apply focus:bg-white transition-all duration-200;
+    @apply placeholder:text-gray-400;
+  }
+  
+  .textarea-modern {
+    @apply resize-none border-2 border-gray-200 rounded-xl px-4 py-3;
+    @apply bg-gray-50 focus:bg-white focus:border-indigo-400;
+    @apply focus:ring-4 focus:ring-indigo-100 transition-all duration-200;
+    @apply placeholder:text-gray-400;
+  }
+  
+  /* State indicators */
+  .state-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .state-branching {
+    @apply bg-orange-100 text-orange-700 border border-orange-200;
+  }
+  
+  .state-continuing {
+    @apply bg-green-100 text-green-700 border border-green-200;
+  }
+  
+  .state-streaming {
+    @apply bg-indigo-100 text-indigo-700 border border-indigo-200;
+  }
+  
+  /* Loading animations */
+  .skeleton-loader {
+    @apply bg-gray-200 rounded-lg;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  /* Utility classes */
+  .fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  .scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+  
+  /* Enhanced shadows */
+  .shadow-soft {
+    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
   }
 }

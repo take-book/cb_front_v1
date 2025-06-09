@@ -1,22 +1,22 @@
 <template>
-  <div class="h-full flex flex-col bg-white">
+  <div class="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white">
     <!-- Header -->
-    <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-gray-50">
+    <div class="flex-shrink-0 px-6 py-4 border-b border-gray-200/50 bg-white/95 backdrop-blur-sm shadow-sm">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-medium text-gray-900">
-          Conversation Thread
+        <h3 class="text-lg font-semibold text-gray-900">
+          💬 Conversation Thread
         </h3>
-        <div class="text-xs text-gray-500">
+        <div class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
           {{ mergedMessages.displayMessages.length + mergedMessages.streamingOnlyMessages.length }} messages
         </div>
       </div>
-      <div v-if="isBranchingMode" class="mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-        🌿 Showing branch from selected message
+      <div v-if="isBranchingMode" class="mt-2 state-badge state-branching">
+        🌿 Branching mode active
       </div>
     </div>
 
     <!-- Messages -->
-    <div class="flex-1 overflow-y-auto px-4 py-2 space-y-3" ref="messagesContainer">
+    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4" ref="messagesContainer">
       <!-- Display existing messages from store (with deduplication) -->
       <div
         v-for="(message, index) in mergedMessages.displayMessages"
@@ -28,28 +28,24 @@
       >
         <div
           :class="[
-            'max-w-[80%] rounded-lg px-3 py-2',
             message.role === 'user'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-900 border border-gray-200',
-            selectedMessageUuid === message.message_uuid && 'ring-2 ring-orange-300'
+              ? 'message-bubble-user ml-auto'
+              : 'message-bubble-assistant',
+            selectedMessageUuid === message.message_uuid && 'ring-4 ring-orange-400/50'
           ]"
         >
           <!-- Message Role Header -->
-          <div class="text-xs font-medium mb-1 opacity-75">
-            {{ message.role === 'user' ? 'You' : 'AI' }}
-            <span v-if="selectedMessageUuid === message.message_uuid" class="ml-1">
-              👈 Selected
+          <div class="text-xs font-medium mb-2 flex items-center justify-between">
+            <span :class="message.role === 'user' ? 'text-white/80' : 'text-gray-600'">
+              {{ message.role === 'user' ? '👤 You' : '🤖 AI' }}
+            </span>
+            <span v-if="selectedMessageUuid === message.message_uuid" class="state-badge state-branching text-xs py-0 px-2">
+              ✓ Selected
             </span>
           </div>
           
           <!-- Message Content -->
-          <div
-            :class="[
-              'text-sm',
-              message.role === 'user' ? 'text-white' : 'text-gray-900'
-            ]"
-          >
+          <div class="text-sm leading-relaxed">
             <MarkdownContent 
               :content="message.content" 
               :class="message.role === 'user' ? 'user-message' : 'assistant-message'"
@@ -57,16 +53,18 @@
           </div>
           
           <!-- Message Actions -->
-          <div class="flex justify-end mt-2 space-x-1">
+          <div class="flex justify-end mt-3">
             <button
               @click="$emit('select-message', message.message_uuid)"
               :class="[
-                'text-xs px-2 py-1 rounded hover:bg-black/10 transition-colors',
-                message.role === 'user' ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-700'
+                'btn-ghost text-xs px-3 py-1',
+                message.role === 'user' 
+                  ? 'text-white/70 hover:text-white hover:bg-white/20' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
               ]"
               :title="selectedMessageUuid === message.message_uuid ? 'Already selected' : 'Select for branching'"
             >
-              {{ selectedMessageUuid === message.message_uuid ? '✓' : '🌿' }}
+              {{ selectedMessageUuid === message.message_uuid ? '✓ Selected' : '🌿 Select' }}
             </button>
           </div>
         </div>
@@ -82,9 +80,9 @@
               'flex justify-end'
             ]"
           >
-            <div class="max-w-[80%] rounded-lg px-3 py-2 bg-blue-600 text-white">
-              <div class="text-xs font-medium mb-1 opacity-75">You</div>
-              <div class="text-sm text-white">
+            <div class="message-bubble-user ml-auto">
+              <div class="text-xs font-medium mb-2 text-white/80">👤 You</div>
+              <div class="text-sm leading-relaxed">
                 <MarkdownContent 
                   :content="msg.content" 
                   class="user-message"
@@ -117,12 +115,14 @@
       
       <!-- Empty state -->
       <div v-if="mergedMessages.displayMessages.length === 0 && !streamingMessage && mergedMessages.streamingOnlyMessages.length === 0" class="flex items-center justify-center h-full">
-        <div class="text-center text-gray-500">
-          <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          <p class="text-sm">No conversation yet</p>
-          <p class="text-xs mt-1">Send a message to start</p>
+        <div class="text-center text-gray-500 bg-white rounded-2xl p-8 shadow-soft border border-gray-100">
+          <div class="bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <p class="text-lg font-medium text-gray-900 mb-2">Start a conversation</p>
+          <p class="text-sm text-gray-500">Send your first message to begin chatting</p>
         </div>
       </div>
     </div>

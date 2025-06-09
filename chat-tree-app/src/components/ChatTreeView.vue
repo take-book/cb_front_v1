@@ -6,6 +6,13 @@
       class="chat-tree-svg"
       :viewBox="`-50 -50 ${treeLayout.width + 200} ${treeLayout.height + 200}`"
     >
+      <!-- Gradients definition -->
+      <defs>
+        <linearGradient id="activeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+        </linearGradient>
+      </defs>
       <!-- Connections -->
       <g class="connections">
         <path
@@ -53,23 +60,23 @@
             class="node-content"
           >
             <div class="p-3 h-full flex flex-col">
-              <div class="flex items-center justify-between mb-1">
-                <div class="text-xs font-semibold" :class="getRoleColor(node.role)">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-bold" :class="getRoleColor(node.role)">
                   {{ getRoleLabel(node.role) }}
                 </div>
-                <div class="text-xs opacity-60">
-                  <span v-if="selectedNodeUuid === node.uuid && canBranchFrom(node.uuid)" class="text-orange-600">
-                    🌿
+                <div class="text-sm">
+                  <span v-if="selectedNodeUuid === node.uuid && canBranchFrom(node.uuid)" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                    🌿 Branch
                   </span>
-                  <span v-else-if="selectedNodeUuid === node.uuid" class="text-green-600">
-                    ✅
+                  <span v-else-if="selectedNodeUuid === node.uuid" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    ✓ Selected
                   </span>
-                  <span v-else-if="canBranchFrom(node.uuid)" class="text-blue-400">
-                    📍
+                  <span v-else-if="canBranchFrom(node.uuid)" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                    📍 Available
                   </span>
                 </div>
               </div>
-              <div class="text-sm text-gray-700 line-clamp-3 flex-1 markdown-preview">
+              <div class="text-sm text-gray-800 line-clamp-3 flex-1 markdown-preview leading-relaxed">
                 <MarkdownContent :content="truncateContent(node.content)" />
               </div>
             </div>
@@ -215,9 +222,9 @@ const canBranchFrom = (nodeUuid: string): boolean => {
   width: 100%;
   height: 100%;
   overflow: auto;
-  background-color: #f9fafb;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   position: relative;
-  padding: 20px;
+  padding: 24px;
 }
 
 .chat-tree-svg {
@@ -247,73 +254,87 @@ const canBranchFrom = (nodeUuid: string): boolean => {
 }
 
 .tree-connection {
-  stroke: #d1d5db;
-  stroke-width: 2;
+  stroke: #cbd5e1;
+  stroke-width: 3;
   fill: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  transition: all 0.3s ease;
 }
 
 .tree-connection.active-path {
-  stroke: #3b82f6;
-  stroke-width: 3;
+  stroke: url(#activeGradient);
+  stroke-width: 4;
+  filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
 }
 
 .tree-node-group {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .tree-node-group:hover .tree-node {
-  stroke: #6b7280;
+  stroke: #6366f1;
   stroke-width: 2;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  transform: scale(1.02);
 }
 
 .tree-node {
   fill: white;
   stroke: #e5e7eb;
-  stroke-width: 1;
-  transition: all 0.2s ease;
+  stroke-width: 2;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
 }
 
 .tree-node.role-user {
-  fill: #eff6ff;
+  fill: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
   stroke: #3b82f6;
+  stroke-width: 2;
 }
 
 .tree-node.role-assistant {
-  fill: #f0fdf4;
+  fill: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   stroke: #10b981;
+  stroke-width: 2;
 }
 
 .tree-node.role-system {
-  fill: #f9fafb;
+  fill: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   stroke: #6b7280;
+  stroke-width: 2;
 }
 
 .tree-node.selected {
-  stroke-width: 3;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  stroke-width: 4;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
+  transform: scale(1.05);
 }
 
 .tree-node.role-user.selected {
   stroke: #1d4ed8;
+  fill: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
 }
 
 .tree-node.role-assistant.selected {
   stroke: #059669;
+  fill: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
 }
 
 .tree-node.role-system.selected {
   stroke: #374151;
+  fill: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
 }
 
 .tree-node.can-branch {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .tree-node.can-branch:hover {
-  filter: brightness(1.05);
-  stroke-width: 2;
+  filter: brightness(1.05) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
+  stroke-width: 3;
+  transform: scale(1.03);
 }
 
 .tree-node.can-branch.role-user:hover {
